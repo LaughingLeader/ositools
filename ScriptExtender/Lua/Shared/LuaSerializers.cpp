@@ -35,7 +35,7 @@ namespace dse::lua
 		if (s.IsWriting) {
 			InvokeDataValueToLua(s.L, v);
 		} else {
-			LuaToInvokeDataValue(s.L, 1, v);
+			LuaToInvokeDataValue(s.L, -1, v);
 		}
 
 		return s;
@@ -698,6 +698,30 @@ namespace dse::lua
 			lua_pop(s.L, 1);
 		}
 
+		s.EndObject();
+		return s;
+	}
+
+	LuaSerializer& operator << (LuaSerializer& s, stats::ItemSet& v)
+	{
+		s.BeginObject();
+		P(Name);
+		P(TranslatedName);
+		P(TranslatedSetEffect);
+		P(Items);
+		P(GrantedSkills);
+		P(GrantedStatuses);
+		P(ItemsUpgradeLevel);
+		s.EndObject();
+		return s;
+	}
+
+	LuaSerializer& operator << (LuaSerializer& s, stats::ItemColorDefinition& v)
+	{
+		s.BeginObject();
+		P(Color1);
+		P(Color2);
+		P(Color3);
 		s.EndObject();
 		return s;
 	}

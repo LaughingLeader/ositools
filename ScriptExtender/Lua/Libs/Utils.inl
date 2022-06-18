@@ -109,13 +109,97 @@ void PrintError(lua_State* L)
 	gExtender->LogLuaError(ss.str());
 }
 
-STDString GetHandleType(ComponentHandle handle)
+bool IsValidHandle(lua_State* L)
 {
-	auto type = EnumInfo<ObjectHandleType>::Find((ObjectHandleType)handle.GetType());
-	if (type) {
-		return type.Str;
+	switch (lua_type(L, 1))
+	{
+	case LUA_TLIGHTUSERDATA:
+		return (bool)get<ComponentHandle>(L, 1);
+
+	case LUA_TUSERDATA:
+	{
+		auto handle = ComponentHandleProxy::AsUserData(L, 1);
+		return handle != nullptr ? (bool)handle->Handle() : false;
+	}
+
+	default:
+		return false;
+	}
+}
+
+UserReturn MakeHandleObject(lua_State* L)
+{
+	StackCheck _(L, 1);
+	ComponentHandle handle;
+
+	switch (lua_type(L, 1))
+	{
+	case LUA_TLIGHTUSERDATA:
+		handle = get<ComponentHandle>(L, 1);
+		break;
+
+	case LUA_TUSERDATA:
+		handle = ComponentHandleProxy::CheckUserData(L, 1)->Handle();
+		break;
+
+	default:
+		luaL_error(L, "MakeHandleObject() expects a userdata handle or ComponentHandleProxy as a parameter");
+	}
+
+	if (State::FromLua(L)->IsClient()) {
+		ComponentHandleProxy::Make(L, handle, ecl::GetEntityWorld());
 	} else {
-		return "Unknown";
+		ComponentHandleProxy::Make(L, handle, esv::GetEntityWorld());
+	}
+
+	return 1;
+}
+
+std::optional<FixedString> GetHandleType(lua_State* L)
+{
+	ComponentHandle handle;
+
+	switch (lua_type(L, 1))
+	{
+	case LUA_TLIGHTUSERDATA:
+		handle = get<ComponentHandle>(L, 1);
+		break;
+
+	case LUA_TUSERDATA:
+		handle = ComponentHandleProxy::CheckUserData(L, 1)->Handle();
+		break;
+
+	default:
+		luaL_error(L, "GetHandleType() expects a userdata handle or ComponentHandleProxy as a parameter");
+	}
+
+	return EnumInfo<ObjectHandleType>::Find((ObjectHandleType)handle.GetType());
+}
+
+/// <summary>
+/// Converts a handle to an integer value for serialization purposes.
+/// </summary>
+/// <param name="handle">Handle to convert</param>
+int64_t HandleToInteger(ComponentHandle handle)
+{
+	return (int64_t)handle.Handle;
+}
+
+/// <summary>
+/// Converts an integer value to a handle for serialization purposes.
+/// </summary>
+/// <param name="i">Integer value to convert</param>
+ComponentHandle IntegerToHandle(int64_t i)
+{
+	return ComponentHandle(i);
+}
+
+STDString GetValueType(lua_State* L)
+{
+	if (lua_type(L, 1) == LUA_TLIGHTUSERDATA) {
+		return "lightuserdata";
+	} else {
+		return lua_typename(L, 1);
 	}
 }
 
@@ -185,6 +269,11 @@ GlobalSwitches* GetGlobalSwitches()
 	return GetStaticSymbols().GetGlobalSwitches();
 }
 
+GraphicSettings* GetGraphicSettings()
+{
+	return *GetStaticSymbols().ls__GraphicSettings;
+}
+
 void RegisterUtilsLib()
 {
 	DECLARE_MODULE(Utils, Both)
@@ -196,13 +285,19 @@ void RegisterUtilsLib()
 	MODULE_FUNCTION(Print)
 	MODULE_FUNCTION(PrintError)
 	MODULE_FUNCTION(PrintWarning)
+	MODULE_FUNCTION(GetValueType)
+	MODULE_FUNCTION(IsValidHandle)
 	MODULE_FUNCTION(GetHandleType)
+	MODULE_FUNCTION(MakeHandleObject)
+	MODULE_FUNCTION(HandleToInteger)
+	MODULE_FUNCTION(IntegerToHandle)
 	MODULE_FUNCTION(GetGameMode)
 	MODULE_FUNCTION(GetDifficulty)
 	MODULE_FUNCTION(Random)
 	MODULE_FUNCTION(Round)
 	MODULE_FUNCTION(ShowErrorAndExitGame)
 	MODULE_FUNCTION(GetGlobalSwitches)
+	MODULE_FUNCTION(GetGraphicSettings)
 	END_MODULE()
 }
 

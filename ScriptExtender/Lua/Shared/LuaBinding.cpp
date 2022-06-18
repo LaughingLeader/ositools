@@ -38,6 +38,17 @@ void nse_lua_report_handled_error(lua_State* L)
 
 namespace dse::lua
 {
+	void push(lua_State* L, EntityHandle const& h)
+	{
+		auto state = State::FromLua(L);
+		if (state->IsClient()) {
+			EntityProxy::Make(L, h, ecl::GetEntityWorld());
+		} else {
+			EntityProxy::Make(L, h, esv::GetEntityWorld());
+		}
+	}
+
+
 	RegistryEntry::RegistryEntry()
 		: L_(nullptr), ref_(-1)
 	{}
@@ -198,25 +209,6 @@ namespace dse::lua
 
 #endif
 
-	void RegisterLib(lua_State* L, char const* name, luaL_Reg const* lib)
-	{
-		lua_getglobal(L, "Ext"); // stack: Ext
-		lua_createtable(L, 0, 0); // stack: ext, lib
-		luaL_setfuncs(L, lib, 0);
-		lua_setfield(L, -2, name);
-		lua_pop(L, 1);
-	}
-
-	void RegisterLib(lua_State* L, char const* name, char const* subTableName, luaL_Reg const* lib)
-	{
-		lua_getglobal(L, "Ext"); // stack: Ext
-		lua_getfield(L, -1, name); // stack: Ext, parent
-		lua_createtable(L, 0, 0); // stack: ext, parent, lib
-		luaL_setfuncs(L, lib, 0);
-		lua_setfield(L, -2, subTableName);
-		lua_pop(L, 2);
-	}
-
 
 	ModuleRegistry gModuleRegistry;
 
@@ -229,7 +221,7 @@ namespace dse::lua
 	{
 		for (auto const& module : modules_) {
 			if (role == module.Role || module.Role == ModuleRole::Both) {
-				AddModuleToState(L, module);
+				InstantiateModule(L, module);
 			}
 		}
 	}
@@ -245,38 +237,88 @@ namespace dse::lua
 	void ModuleRegistry::RegisterModuleTypeInformation(ModuleDefinition const& module)
 	{
 		STDString name;
-		switch (module.Role) {
-		case ModuleRole::Both: name = "Ext."; break;
-		case ModuleRole::Client: name = "ExtClient."; break;
-		case ModuleRole::Server: name = "ExtServer."; break;
-		}
-
-		name += module.Table.GetString();
+		name = module.Table.GetString();
 		if (module.SubTable) {
 			name += ".";
 			name += module.SubTable.GetString();
 		}
 
-		TypeInformation& mod = TypeInformationRepository::GetInstance().RegisterType(FixedString{ name });
+		STDString exportName = "Module_";
+		switch (module.Role) {
+		case ModuleRole::Both: break;
+		case ModuleRole::Client: exportName += "Client"; break;
+		case ModuleRole::Server: exportName += "Server"; break;
+		}
+
+		exportName += name;
+
+		TypeInformation& mod = TypeInformationRepository::GetInstance().RegisterType(FixedString{ exportName });
 		mod.Kind = LuaTypeId::Module;
+		mod.NativeName = FixedString(name);
+		switch (module.Role) {
+		case ModuleRole::Both: mod.ModuleRole = FixedString("Both"); break;
+		case ModuleRole::Client: mod.ModuleRole = FixedString("Client"); break;
+		case ModuleRole::Server: mod.ModuleRole = FixedString("Server"); break;
+		}
+
 		for (auto const& func : module.Functions) {
 			mod.Methods.insert(std::make_pair(func.Name, func.Signature));
 		}
 	}
 
-	void ModuleRegistry::AddModuleToState(lua_State* L, ModuleDefinition const& module)
+	void ModuleRegistry::MakeLuaFunctionTable(ModuleDefinition const& module, std::vector<luaL_Reg>& lib)
 	{
-		std::vector<luaL_Reg> lib;
 		lib.reserve(module.Functions.size() + 1);
 		for (auto const& fun : module.Functions) {
 			lib.push_back({ fun.Name.GetString(), fun.Func });
 		}
 		lib.push_back({ nullptr, nullptr });
+	}
 
+	void ModuleRegistry::InstantiateNamedModule(lua_State* L, char const* name, ModuleDefinition const& module)
+	{
+		std::vector<luaL_Reg> lib;
+		MakeLuaFunctionTable(module, lib);
+
+		lua_getglobal(L, "Ext"); // stack: Ext
+		lua_createtable(L, 0, 0); // stack: ext, lib
+		luaL_setfuncs(L, lib.data(), 0);
+		lua_setfield(L, -2, name);
+		lua_pop(L, 1);
+	}
+
+	void ModuleRegistry::InstantiateNamedModule(lua_State* L, char const* name, char const* subTableName, ModuleDefinition const& module)
+	{
+		std::vector<luaL_Reg> lib;
+		MakeLuaFunctionTable(module, lib);
+
+		lua_getglobal(L, "Ext"); // stack: Ext
+		lua_getfield(L, -1, name); // stack: Ext, parent
+		lua_createtable(L, 0, 0); // stack: ext, parent, lib
+		luaL_setfuncs(L, lib.data(), 0);
+		lua_setfield(L, -2, subTableName);
+		lua_pop(L, 2);
+	}
+
+	void ModuleRegistry::InstantiateModule(lua_State* L, char const* prefix, ModuleDefinition const& module)
+	{
 		if (!module.SubTable) {
-			RegisterLib(L, module.Table.GetString(), lib.data());
+			InstantiateNamedModule(L, (STDString(prefix) + module.Table.GetString()).c_str(), module);
 		} else {
-			RegisterLib(L, module.Table.GetString(), module.SubTable.GetString(), lib.data());
+			InstantiateNamedModule(L, (STDString(prefix) + module.Table.GetString()).c_str(), module.SubTable.GetString(), module);
+		}
+	}
+
+	void ModuleRegistry::InstantiateModule(lua_State* L, ModuleDefinition const& module)
+	{
+		InstantiateModule(L, "", module);
+
+		if (module.Role == ModuleRole::Both || module.Role == ModuleRole::Server) {
+			InstantiateModule(L, "Server", module);
+		}
+
+		if (module.Role == ModuleRole::Both || module.Role == ModuleRole::Client) {
+			InstantiateModule(L, "Client", module);
 		}
 	}
 

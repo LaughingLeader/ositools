@@ -108,7 +108,7 @@ namespace dse
 
 		struct SkillManager : public ProtectedGameObject<SkillManager>
 		{
-			void * FreeSkillState;
+			SkillState * CurrentSkillState;
 			ComponentHandle OwnerHandle;
 			Map<FixedString, Skill *> Skills;
 			RefMap<FixedString, uint32_t> TimeItemAddedToSkillManager;
@@ -240,6 +240,7 @@ namespace dse
 			ObjectSet<FixedString> RegisteredTriggers;
 			PlayerData * PlayerData;
 			eoc::PlayerUpgrade PlayerUpgrade;
+			/// Number of times ServerControl was acquired on this character
 			uint32_t ServerControlRefCount;
 			float NoiseTimer;
 			float U131;

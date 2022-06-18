@@ -51,6 +51,7 @@ private:
 struct TypeInformation
 {
 	FixedString TypeName;
+	FixedString NativeName;
 	LuaTypeId Kind{ LuaTypeId::Unknown };
 	TypeInformationRef KeyType;
 	TypeInformationRef ElementType;
@@ -66,6 +67,7 @@ struct TypeInformation
 	bool IsBuiltin{ false };
 	bool DeferredInitializationDone{ false };
 	bool Validated{ false };
+	FixedString ModuleRole;
 
 	void DeferredInitialize();
 	void Validate();

@@ -1037,8 +1037,8 @@ struct TreasureSubTableDescription
 
 	struct DropCount
 	{
-		int Chance;
 		int Amount;
+		int Chance;
 	};
 
 	ObjectSet<Category*> Categories;
@@ -1229,8 +1229,34 @@ struct ItemCombinationManager : public NamedElementManager<ItemCombination>
 	RefMap<FixedString, ItemCombinationProperty*> ComboProperties;
 };
 
+struct ItemSet
+{
+	FixedString Name;
+	TranslatedString TranslatedName;
+	TranslatedString TranslatedSetEffect;
+	ObjectSet<FixedString> Items;
+	ObjectSet<FixedString> GrantedSkills;
+	ObjectSet<FixedString> GrantedStatuses;
+	int32_t ItemsUpgradeLevel;
+};
+
+struct ItemSetManager : public NamedElementManager<ItemSet>
+{
+	void* Unknown[2];
+	Map<FixedString, ItemSet*> ItemSets;
+	void* Unknown2;
+	ItemSet* ParsedItemSet;
+};
+
 
 extern CRPGStatsVMTMappings gCRPGStatsVMTMappings;
+
+struct ItemColorDefinition
+{
+	uint32_t Color1;
+	uint32_t Color2;
+	uint32_t Color3;
+};
 
 struct RPGStats : public ProtectedGameObject<RPGStats>
 {
@@ -1251,7 +1277,7 @@ struct RPGStats : public ProtectedGameObject<RPGStats>
 	uint64_t Unkn1[5];
 	ExtraData * ExtraData;
 	RefMap<FixedString, void *> RefMap1;
-	RefMap<FixedString, void *> ColorTable;
+	RefMap<FixedString, ItemColorDefinition> Colors;
 	Map<FixedString, FixedString> TreasureCategoryMaps;
 	Map<FixedString, int> TreasureWeaponCounters;
 	Map<FixedString, int> TreasureArmorCounters;
@@ -1265,7 +1291,7 @@ struct RPGStats : public ProtectedGameObject<RPGStats>
 	SkillSetManager * SkillSetManager;
 	CItemProgressionManager * ItemProgressionManager;
 	ItemCombinationManager * ItemCombinationManager;
-	void * ItemSetsManager;
+	ItemSetManager* ItemSetsManager;
 	ScratchBuffer* CurrentPreParseBuf;
 	FixedString CurrentStatsEntryName;
 	Map<FixedString, uint64_t> PreParsedDataBufferMap;

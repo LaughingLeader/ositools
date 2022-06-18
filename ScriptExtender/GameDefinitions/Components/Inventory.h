@@ -20,7 +20,7 @@ namespace dse
 			void * VMT;
 			FixedString GUID; // Unused?
 			NetId NetID;
-			PrimitiveSet<uint16_t> PeerIdClassNames;
+			ObjectSet<uint16_t> PeerIdClassNames;
 			ComponentHandle Handle;
 			uint8_t EquipmentSlots;
 			ComponentHandle ParentHandle;
@@ -61,6 +61,10 @@ namespace dse
 			ObjectSet<PeerId> PeerIds2;
 		};
 
+		struct InventoryViewFactory : public NetworkComponentFactory<InventoryView>
+		{
+		};
+
 	}
 
 	namespace ecl
@@ -72,7 +76,7 @@ namespace dse
 			void* VMT;
 			FixedString GUID;
 			NetId NetID;
-			PrimitiveSet<uint16_t> PeerIDClassNames;
+			ObjectSet<uint16_t> PeerIDClassNames;
 			ComponentHandle OwnerCharacterHandleUI;
 			uint8_t field_40;
 			uint8_t field_41;
@@ -96,6 +100,8 @@ namespace dse
 
 		struct InventoryView
 		{
+			static constexpr auto ObjectTypeIndex = ObjectHandleType::ClientInventoryView;
+
 			void* VMT;
 			FixedString GUID_Unused;
 			NetId NetID;
@@ -105,6 +111,10 @@ namespace dse
 			ObjectSet<NetId> ParentInventories;
 			ObjectSet<ComponentHandle> ItemHandles;
 			Map<NetId, int> ItemNetIdToIndex;
+		};
+
+		struct InventoryViewFactory : public NetworkComponentFactory<InventoryView>
+		{
 		};
 
 		struct InventoryProtocol : public net::Protocol

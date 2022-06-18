@@ -209,11 +209,13 @@ namespace dse
 
 		SYM_OFF(ecl__LevelManager);
 		SYM_OFF(ecl__InventoryFactory);
+		SYM_OFF(ecl__InventoryViewFactory);
 
 		SYM_OFF(ecl__InventoryProtocol__PostUpdate);
 
 		SYM_OFF(esv__LevelManager);
 		SYM_OFF(esv__InventoryFactory);
+		SYM_OFF(esv__InventoryViewFactory);
 
 		SYM_OFF(esv__gAiModifiers);
 		SYM_OFF(esv__gAiHelpers);
@@ -242,6 +244,7 @@ namespace dse
 		SYM_OFF(ResourceManager__Instance);
 		SYM_OFF(ls__VisualFactory__DestroyVisual);
 		SYM_OFF(ls__GlobalSwitches);
+		SYM_OFF(ls__GraphicSettings);
 
 		SYM_OFF(CDivinityStats_Item__FoldDynamicAttributes);
 		SYM_OFF(ls__ModuleSettings__HasCustomMods);
