@@ -376,7 +376,7 @@ UserReturn Cross(lua_State* L, glm::vec3 const& x, glm::vec3 const& y)
 
 
 /// <summary>
-/// Returns the distance betwwen p0 and p1, i.e., `length(p0 - p1)`.
+/// Returns the distance between p0 and p1, i.e., `length(p0 - p1)`.
 /// </summary>
 float Distance(lua_State* L, glm::vec3 const& p0, glm::vec3 const& p1)
 {
@@ -525,16 +525,32 @@ UserReturn OuterProduct(lua_State* L, MathParam const& c, MathParam const& r)
 }
 
 /// <summary>
-/// Builds a rotation 4 * 4 matrix created from an axis of 3 scalars and an angle expressed in radians.
+/// Builds a rotation matrix created from an axis of 3 scalars and an angle expressed in radians.
 /// </summary>
-void Rotate(lua_State* L, glm::mat4 const& m, float angle, glm::vec3 const& axis)
+void Rotate(lua_State* L, MathParam const& m, float angle, glm::vec3 const& axis)
 {
-	glm::rotate(m, angle, axis);
-	assign(L, 1, m);
+	switch (m.Arity) {
+	case 16:
+	{
+		glm::rotate(m.mat4, angle, axis);
+		assign(L, 1, m.mat4);
+	}
+
+	case 9:
+	{
+		glm::mat4 m4{ m.mat3 };
+		m4[3][3] = 1.0f;
+		glm::rotate(m4, angle, axis);
+		assign(L, 1, glm::mat3(m4));
+	}
+
+	default:
+		luaL_error(L, "Expected a 3x3 or 4x4 matrix");
+	}
 }
 
 /// <summary>
-/// Transforms a matrix with a scale 4 * 4 matrix created from a vector of 3 components.
+/// Transforms a matrix with a translation 4 * 4 matrix created from a vector of 3 components.
 /// </summary>
 void Translate(lua_State* L, glm::mat4 const& m, glm::vec3 const& translation)
 {
@@ -543,7 +559,7 @@ void Translate(lua_State* L, glm::mat4 const& m, glm::vec3 const& translation)
 }
 
 /// <summary>
-/// Transforms a matrix with a translation 4 * 4 matrix created from 3 scalars.
+/// Transforms a matrix with a scale 4 * 4 matrix created from 3 scalars.
 /// </summary>
 void Scale(lua_State* L, glm::mat4 const& m, glm::vec3 const& scale)
 {
@@ -554,13 +570,21 @@ void Scale(lua_State* L, glm::mat4 const& m, glm::vec3 const& scale)
 /// <summary>
 /// Builds a rotation 4 * 4 matrix created from an axis of 3 scalars and an angle expressed in radians.
 /// </summary>
-glm::mat4 BuildRotation(glm::vec3 const& v, float angle)
+glm::mat4 BuildRotation4(glm::vec3 const& v, float angle)
 {
 	return glm::rotate(angle, v);
 }
 
 /// <summary>
-/// Transforms a matrix with a scale 4 * 4 matrix created from a vector of 3 components.
+/// Builds a rotation 3 * 3 matrix created from an axis of 3 scalars and an angle expressed in radians.
+/// </summary>
+glm::mat3 BuildRotation3(glm::vec3 const& v, float angle)
+{
+	return glm::mat3(glm::rotate(angle, v));
+}
+
+/// <summary>
+/// Builds a translation 4 * 4 matrix created from a vector of 3 components.
 /// </summary>
 glm::mat4 BuildTranslation(glm::vec3 const& v)
 {
@@ -568,7 +592,7 @@ glm::mat4 BuildTranslation(glm::vec3 const& v)
 }
 
 /// <summary>
-/// Transforms a matrix with a translation 4 * 4 matrix created from 3 scalars.
+///  Builds a scale 4 * 4 matrix created from 3 scalars.
 /// </summary>
 glm::mat4 BuildScale(glm::vec3 const& v)
 {
@@ -578,19 +602,42 @@ glm::mat4 BuildScale(glm::vec3 const& v)
 /// <summary>
 /// Extracts the `(X * Y * Z)` Euler angles from the rotation matrix M.
 /// </summary>
-glm::vec3 ExtractEulerAngles(lua_State* L, glm::mat4 const& m)
+glm::vec3 ExtractEulerAngles(lua_State* L, MathParam const& m)
 {
-	glm::vec3 angle;
-	glm::extractEulerAngleXYZ(m, angle.x, angle.y, angle.z);
-	return angle;
+	switch (m.Arity) {
+	case 16:
+	{
+		glm::vec3 angle;
+		glm::extractEulerAngleXYZ(m.mat4, angle.x, angle.y, angle.z);
+		return angle;
+	}
+
+	case 9:
+	{
+		glm::vec3 angle;
+		glm::extractEulerAngleXYZ(glm::mat4(m.mat3), angle.x, angle.y, angle.z);
+		return angle;
+	}
+
+	default:
+		luaL_error(L, "Expected a 3x3 or 4x4 matrix");
+	}
 }
 
 /// <summary>
 /// Creates a 3D 4 * 4 homogeneous rotation matrix from euler angles `(X * Y * Z)`.
 /// </summary>
-glm::mat4 BuildFromEulerAngles(lua_State* L, glm::vec3 const& angle)
+glm::mat4 BuildFromEulerAngles4(lua_State* L, glm::vec3 const& angle)
 {
 	return glm::eulerAngleYXZ(angle.x, angle.y, angle.z);
+}
+
+/// <summary>
+/// Creates a 3D 3 * 3 homogeneous rotation matrix from euler angles `(X * Y * Z)`.
+/// </summary>
+glm::mat3 BuildFromEulerAngles3(lua_State* L, glm::vec3 const& angle)
+{
+	return glm::mat3(glm::eulerAngleYXZ(angle.x, angle.y, angle.z));
 }
 
 /// <summary>
@@ -615,19 +662,46 @@ void Decompose(lua_State* L, glm::mat4 const& m, glm::vec3 const& scale_, glm::v
 /// <summary>
 /// Get the axis and angle of the rotation from a matrix.
 /// </summary>
-float ExtractAxisAngle(lua_State* L, glm::mat4 const& m, glm::vec3 const& axis_)
+float ExtractAxisAngle(lua_State* L, MathParam const& m, glm::vec3 const& axis_)
 {
-	glm::vec3 axis;
-	float angle;
-	glm::axisAngle(m, axis, angle);
-	assign(L, 2, axis);
-	return angle;
+	switch (m.Arity) {
+	case 16:
+	{
+		glm::vec3 axis;
+		float angle;
+		glm::axisAngle(m.mat4, axis, angle);
+		assign(L, 2, axis);
+		return angle;
+	}
+
+	case 9:
+	{
+		glm::vec3 axis;
+		float angle;
+		glm::mat4 m4{ m.mat3 };
+		m4[3][3] = 1.0f;
+		glm::axisAngle(m4, axis, angle);
+		assign(L, 2, axis);
+		return angle;
+	}
+
+	default:
+		luaL_error(L, "Expected a 3x3 or 4x4 matrix");
+	}
 }
 
 /// <summary>
 /// Build a matrix from axis and angle.
 /// </summary>
-glm::mat4 BuildFromAxisAngle(lua_State* L, glm::vec3 const& axis, float angle)
+glm::mat3 BuildFromAxisAngle3(lua_State* L, glm::vec3 const& axis, float angle)
+{
+	return glm::mat3(glm::axisAngleMatrix(axis, angle));
+}
+
+/// <summary>
+/// Build a matrix from axis and angle.
+/// </summary>
+glm::mat4 BuildFromAxisAngle4(lua_State* L, glm::vec3 const& axis, float angle)
 {
 	return glm::axisAngleMatrix(axis, angle);
 }
@@ -789,11 +863,14 @@ void RegisterMathLib()
 	MODULE_FUNCTION(Translate)
 	MODULE_FUNCTION(Scale)
 	MODULE_FUNCTION(ExtractEulerAngles)
-	MODULE_FUNCTION(BuildFromEulerAngles)
+	MODULE_FUNCTION(BuildFromEulerAngles3)
+	MODULE_FUNCTION(BuildFromEulerAngles4)
 	MODULE_FUNCTION(Decompose)
 	MODULE_FUNCTION(ExtractAxisAngle)
-	MODULE_FUNCTION(BuildFromAxisAngle)
-	MODULE_FUNCTION(BuildRotation)
+	MODULE_FUNCTION(BuildFromAxisAngle3)
+	MODULE_FUNCTION(BuildFromAxisAngle4)
+	MODULE_FUNCTION(BuildRotation3)
+	MODULE_FUNCTION(BuildRotation4)
 	MODULE_FUNCTION(BuildTranslation)
 	MODULE_FUNCTION(BuildScale)
 
