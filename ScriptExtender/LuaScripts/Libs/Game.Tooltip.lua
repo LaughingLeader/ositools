@@ -1357,7 +1357,7 @@ end
 ---@param request TooltipRequest
 ---@vararg string|boolean|number|EclGameObject
 function TooltipHooks:InvokeBeforeNotifyListeners(request, ...)
-    local rTypeTable = self.BeforeNotifyListeners[request.Type]
+	local rTypeTable = self.BeforeNotifyListeners[request.Type]
 	if rTypeTable then
 		InvokeListenerTable(rTypeTable, request, ...)
 	end
@@ -1369,14 +1369,14 @@ end
 ---@param request TooltipRequest
 ---@param tooltip TooltipData
 function TooltipHooks:NotifyListeners(requestType, name, request, tooltip, ...)
-    local args = {...}
-    table.insert(args, tooltip)
-    self:NotifyAll(self.TypeListeners[requestType], table.unpack(args))
-    if name ~= nil and self.ObjectListeners[requestType] ~= nil then
-        self:NotifyAll(self.ObjectListeners[requestType][name], table.unpack(args))
-    end
+	local args = {...}
+	table.insert(args, tooltip)
+	self:NotifyAll(self.TypeListeners[requestType], table.unpack(args))
+	if name ~= nil and self.ObjectListeners[requestType] ~= nil then
+		self:NotifyAll(self.ObjectListeners[requestType][name], table.unpack(args))
+	end
 
-    self:NotifyAll(self.GlobalListeners, request, tooltip)
+	self:NotifyAll(self.GlobalListeners, request, tooltip)
 end
 
 function TooltipHooks:NotifyAll(listeners, ...)

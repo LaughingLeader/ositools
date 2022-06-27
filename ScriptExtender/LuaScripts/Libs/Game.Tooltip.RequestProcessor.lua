@@ -61,11 +61,11 @@ local function _IsNaN(x)
 	if x == nil then
 		return true
 	end
-    if _type(x) == "number" then
-        local str = tostring(x)
-        return str == "nan" or str == tostring(0/0)
-    end
-    return true
+	if _type(x) == "number" then
+		local str = tostring(x)
+		return str == "nan" or str == tostring(0/0)
+	end
+	return true
 end
 
 ---@param doubleHandle integer
