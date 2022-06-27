@@ -732,15 +732,20 @@ function RequestProcessor.SetWorldTooltipRequest(request, ui, uiType, event, tex
 	return request
 end
 
-function RequestProcessor.SetWorldHoverTooltipRequest(request, ui, uiType, event, text, levelText, bool)
+---@param request TooltipRequest
+---@param ui UIObject
+---@param uiType integer
+---@param event string
+---@param text string
+---@param levelText string
+---@param shortenWidth boolean
+---@param item EclItem
+---@param objectHandleDouble number
+function RequestProcessor.SetWorldHoverTooltipRequest(request, ui, uiType, event, text, levelText, shortenWidth, item, objectHandleDouble)
 	request.Type = "WorldHover"
 	request.Text = text
-	request.IsFromItem = false
-	local cursor = Ext.UI.GetPickingState()
-	if cursor and _IsValidHandle(cursor.HoverItem) then
-		request.ObjectHandleDouble = _HandleToDouble(cursor.HoverItem)
-		request.IsFromItem = true
-	end
+	request.IsFromItem = item ~= nil
+	request.ObjectHandleDouble = objectHandleDouble
 	return request
 end
 
@@ -939,20 +944,6 @@ function RequestProcessor:Init(tooltip)
 		end)
 	end
 
-	--[enemyHealthBar(42)][invoke] setText("<font color="#ffffff">Barrel</font>", "Level 1", false)
-	Ext.RegisterUITypeInvokeListener(_UITYPE.enemyHealthBar, "setText", function(ui, event, text, levelText, bool)
-		if text and text ~= "" then
-			local request = _CreateRequest()
-			local b,r = xpcall(RequestProcessor.SetWorldHoverTooltipRequest, debug.traceback, request, ui, _UITYPE.enemyHealthBar, event, text, levelText, bool)
-			if b then
-				RequestProcessor.Tooltip.NextRequest = r
-				request = RequestProcessor.Tooltip.NextRequest
-			else
-				Ext.Utils.PrintError(string.format("[Game.Tooltips.RequestProcessor] Error invoking tooltip handler for event (%s):\n%s", event, r))
-			end
-		end
-	end, "Before")
-
 	--Generic tooltips
 	Ext.RegisterUINameCall("showTooltip", function(ui, ...)
 		if ui:GetTypeId() == _UITYPE.examine then
@@ -962,6 +953,109 @@ function RequestProcessor:Init(tooltip)
 		end
 	end, "Before")
 end
+
+local UNSET_HANDLE = "ls::TranslatedStringRepository::s_HandleUnknown"
+
+local function _GetTranslatedStringValue(ts)
+	local refString = ts.Handle and ts.Handle.ReferenceString or ""
+	if refString == "" and ts.ArgumentString then
+		refString = ts.ArgumentString.ReferenceString
+	end
+	if ts.Handle and ts.Handle.Handle ~= UNSET_HANDLE then
+		return Ext.L10N.GetTranslatedString(ts.Handle.Handle, ts.Handle.ReferenceString)
+	end
+	return refString
+end
+
+local _itemRarity = {
+	Common = 0,
+	Unique = 1,
+	Uncommon = 2,
+	Rare = 3,
+	Epic = 4,
+	Legendary = 5,
+	Divine = 6,
+}
+
+---@param item EclItem
+local function _GetItemDisplayName(item)
+	local statsId = nil
+	if item.StatsId ~= "" and item.StatsId ~= nil and not _itemRarity[item.StatsId] then
+		statsId = item.StatsId
+	end
+	if string.find(item.DisplayName, "|") or item.RootTemplate.DisplayName.Handle == nil or item.DisplayName == statsId then
+		if statsId then
+			local name = Ext.L10N.GetTranslatedStringFromKey(item.StatsId)
+			if name ~= nil and name ~= "" then
+				return name
+			end
+		end
+		local translatedName = _GetTranslatedStringValue(item.RootTemplate.DisplayName)
+		if translatedName ~= nil and translatedName ~= "" then
+			return translatedName
+		end
+	end
+	return item.DisplayName
+end
+
+local _SlotNames = {
+	Helmet = {"hd4b98ff5g33a8g44e0ga6a9gdb1ab7d70bf3", "Helmet"},
+	Breast = {"hb5c52d20g6855g4929ga78ege3fe776a1f2e", "Chest Armour"},
+	Leggings = {"he7042b52g54d7g4f46g8f69g509460dfe595", "Leggings"},
+	Weapon = {"h102d1ef8g3757g4ff3g8ef2gd68007c6268d", "Weapon"},
+	Shield = {"h77557ac7g4f6fg49bdga76cg404de43d92f5", "Shield"},
+	Ring = {"h970199f8ge650g4fa3ga0deg5995696569b6", "Ring"},
+	Belt = {"h2a76a9ecg2982g4c7bgb66fgbe707db0ac9e", "Belt"},
+	Boots = {"h9b65aab2gf4c4g4b81g96e6g1dcf7ffa8306", "Boots"},
+	Gloves = {"h185545eagdaf0g4286ga411gd50cbdcabc8b", "Gloves"},
+	Amulet = {"hb9d79ca5g59afg4255g9cdbgf614b894be68", "Amulet"},
+	Ring2 = {"h970199f8ge650g4fa3ga0deg5995696569b6", "Ring"},
+	Wings = {"hd716a074gd36ag4dfcgbf79g53bd390dd202", "Wings"},
+	Horns = {"ha35fc503g56dbg4adag963dga359d961e0c8", "Horns"},
+	Overhead = {"hda749a3fg52c0g48d5gae3bgd522dd34f65c", "Overhead"},
+	Offhand = {"h50110389gc98ag49dbgb58fgae2fd227dff4", "Offhand"},
+}
+
+---@param item EclItem
+local function _GetItemSlotName(item)
+	if item.StatsId ~= "" and item.StatsId ~= nil and not _itemRarity[item.StatsId] then
+		---@type StatEntryWeapon
+		local stat = Ext.Stats.Get(item.StatsId)
+		if stat then
+			local tsData = _SlotNames[stat.Slot]
+			if tsData then
+				return Ext.L10N.GetTranslatedString(tsData[1], tsData[2])
+			end
+		end
+	end
+end
+
+local _equipmentPattern = "<font color=\"#ffffff\">%s</font><font size=\"15\"><br>%s</font>"
+
+--Called before a world hover tooltip is shown. text may be "" if it's an item without health.
+--[enemyHealthBar(42)][invoke] setText("<font color="#ffffff">Barrel</font>", "Level 1", false)
+--TODO Figure out if there's an equivalent for controllers.
+Ext.RegisterUITypeInvokeListener(_UITYPE.enemyHealthBar, "setText", function(ui, event, text, levelText, shortenWidth)
+	local cursor = Ext.UI.GetPickingState()
+	if cursor and _IsValidHandle(cursor.HoverItem) then
+		---@type EclItem
+		local item = Ext.Entity.GetItem(cursor.HoverItem)
+		if item and item.RootTemplate and item.RootTemplate.Tooltip > 0 then
+			local objectHandleDouble = _HandleToDouble(cursor.HoverItem)
+			local request = _CreateRequest()
+			if text == nil or text == "" then
+				local name = _GetItemDisplayName(item)
+				local slotName = _GetItemSlotName(item)
+				if slotName then
+					text = _equipmentPattern:format(name, slotName)
+				else
+					text = name
+				end
+			end
+			RequestProcessor.Tooltip.NextRequest = RequestProcessor.SetWorldHoverTooltipRequest(request, ui, _UITYPE.enemyHealthBar, event, text, levelText, shortenWidth, item, objectHandleDouble)
+		end
+	end
+end)
 
 ---@return string
 local function _CreateWorldTooltipRequest(ui, event, text, x, y, isItem, item)
