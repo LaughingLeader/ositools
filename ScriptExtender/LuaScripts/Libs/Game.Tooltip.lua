@@ -1113,7 +1113,17 @@ function TooltipHooks:OnRenderGenericTooltip(ui, method, text, x, y, allowDelay,
 			X = x,
 			Y = y,
 		}}, ui:GetTypeId())
-		self:NotifyListeners(req.Type, nil, req, tooltipData, req.Item)
+
+		if req.Type == "World" then
+			local item = req.Item
+			if item then
+				self:NotifyListeners(req.Type, item.StatsId, req, tooltipData, item)
+			else
+				self:NotifyListeners(req.Type, nil, req, tooltipData, nil)
+			end
+		else
+			self:NotifyListeners(req.Type, nil, req, tooltipData)
+		end
 	
 		local desc = tooltipData:GetDescriptionElement()
 		if desc then
