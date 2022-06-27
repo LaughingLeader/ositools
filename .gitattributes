@@ -1,0 +1,3 @@
+ScriptExtender\LuaScripts\Libs\Game.Tooltip.lua merge=ours
+ScriptExtender\LuaScripts\Libs\Game.Tooltip.RequestProcessor.lua merge=ours
+ScriptExtender\LuaScripts\BuiltinLibraryClient.lua merge=ours
