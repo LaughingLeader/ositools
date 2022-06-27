@@ -17,10 +17,7 @@ local _EXTVERSION = Ext.Version()
 local _DEBUG = Ext.IsDeveloperMode()
 local _UITYPE = Ext.UI.TypeID
 
-local lastGameTooltip = nil
-if Game and Game.Tooltip then
-	lastGameTooltip = Game.Tooltip
-end
+local _GetUIByType = Ext.UI.GetByType
 
 if Game == nil then
 	Game = {}
@@ -793,10 +790,6 @@ end
 
 local previousListeners = {}
 
-if lastGameTooltip.TooltipHooks then
-	previousListeners = lastGameTooltip.TooltipHooks
-end
-
 ---@class TooltipHooks
 TooltipHooks = {
 	---@type TooltipRequest
@@ -824,6 +817,8 @@ TooltipHooks = {
 		All = {},
 	},
 }
+
+RequestProcessor.Tooltip = TooltipHooks
 
 if previousListeners.GlobalListeners then
 	for _,v in pairs(previousListeners.GlobalListeners) do
@@ -952,7 +947,7 @@ function TooltipHooks:RegisterControllerHooks()
 					return character
 				end
 			end
-			local ui = Ext.GetUIByType(_UITYPE.bottomBar_c)
+			local ui = _GetUIByType(_UITYPE.bottomBar_c)
 			if ui then
 				---@type {characterHandle:number}
 				local this = ui:GetRoot()
@@ -1006,7 +1001,7 @@ function TooltipHooks:Init()
 		return
 	end
 
-	RequestProcessor:Init(self)
+	RequestProcessor:Init(TooltipHooks)
 
 	Ext.RegisterUINameInvokeListener("addFormattedTooltip", function (...)
 		self:OnRenderTooltip(TooltipArrayNames.Default, ...)
@@ -1045,7 +1040,7 @@ function TooltipHooks:Init()
 			self.Last.Request = self.NextRequest
 			self.NextRequest = nil
 		end
-		local tt = Ext.GetUIByType(_UITYPE.tooltip)
+		local tt = _GetUIByType(_UITYPE.tooltip)
 		if tt then
 			if #tooltipCustomIcons > 0 then
 				for _,v in pairs(tooltipCustomIcons) do
@@ -1073,8 +1068,12 @@ function TooltipHooks:UpdateGenericTooltip(ui, method, keepUIinScreen)
 	end
 	local this = ui:GetRoot()
 	if this and this.tf then
-		this.tf.shortDesc = self.GenericTooltipData.Text
-		this.tf.setText(self.GenericTooltipData.Text,self.GenericTooltipData.BackgroundType or 0)
+		if self.GenericTooltipData.Text == "" or self.GenericTooltipData.Text == nil then
+			this.INTRemoveTooltip()
+		else
+			this.tf.shortDesc = self.GenericTooltipData.Text
+			this.tf.setText(self.GenericTooltipData.Text,self.GenericTooltipData.BackgroundType or 0)
+		end
 	end
 	self.GenericTooltipData = nil
 end
@@ -1084,37 +1083,49 @@ end
 function TooltipHooks:OnRenderGenericTooltip(ui, method, text, x, y, allowDelay, anchorEnum, backgroundType)
 	---@type TooltipGenericRequest
 	local req = self.NextRequest
-	if not req or req.Type ~= "Generic" then
+	if not req then
 		return
 	end
-	if req.IsCharacterTooltip then
-		req.Text = text
-	end
-
-	self.IsOpen = true
-
-	---@type TooltipGenericRequest
-	self.GenericTooltipData = {}
-	self.GenericTooltipData.Text = text
-	self.GenericTooltipData.X = x
-	self.GenericTooltipData.Y = y
-	req.AllowDelay = allowDelay
-	req.AnchorEnum = anchorEnum
-	req.BackgroundType = backgroundType
-
-	local tooltip = TooltipData:Create(req, ui:GetTypeId())
-	self:NotifyListeners("Generic", nil, req, tooltip)
-
-	if tooltip.Data.Text ~= text or tooltip.Data.X ~= x or tooltip.Data.Y ~= y then
-		for k,v in pairs(tooltip.Data) do
-			self.GenericTooltipData[k] = v
+	if req.Type == "Generic" or req.Type == "WorldHover" then
+		if req.Type == "WorldHover" then
+			req.Type = "World"
 		end
-	else
-		self.GenericTooltipData = nil
+
+		if req.IsCharacterTooltip then
+			req.Text = text
+		end
+	
+		self.IsOpen = true
+	
+		---@type TooltipGenericRequest
+		self.GenericTooltipData = {
+			Text = text,
+			X = x,
+			Y = y
+		}
+		req.AllowDelay = allowDelay
+		req.AnchorEnum = anchorEnum
+		req.BackgroundType = backgroundType
+	
+		local tooltipData = TooltipData:Create({{
+			Type = "Description",
+			Label = text,
+			X = x,
+			Y = y,
+		}}, ui:GetTypeId())
+		self:NotifyListeners(req.Type, nil, req, tooltipData, req.Item)
+	
+		local desc = tooltipData:GetDescriptionElement()
+		if desc then
+			self.GenericTooltipData.Text = desc.Label or ""
+			if desc.X then self.GenericTooltipData.X = desc.X end
+			if desc.Y then self.GenericTooltipData.Y = desc.Y end
+		end
+	
+		self.Last.Type = req.Type
+		self.Last.Request = self.NextRequest
+		self.NextRequest = nil
 	end
-	self.Last.Type = "Generic"
-	self.Last.Request = self.NextRequest
-	self.NextRequest = nil
 end
 
 ---@param ui UIObject
@@ -1132,7 +1143,7 @@ function TooltipHooks:GetCompareOwner(ui, item)
 
 	local handle = nil
 	if not RequestProcessor.ControllerEnabled then
-		local hotbar = Ext.GetUIByType(_UITYPE.hotBar)
+		local hotbar = _GetUIByType(_UITYPE.hotBar)
 		if hotbar ~= nil then
 			---@type {hotbar_mc:{characterHandle:number}}
 			local main = hotbar:GetRoot()
@@ -1141,7 +1152,7 @@ function TooltipHooks:GetCompareOwner(ui, item)
 			end
 		end
 	else
-		local hotbar = Ext.GetUIByType(_UITYPE.bottomBar_c)
+		local hotbar = _GetUIByType(_UITYPE.bottomBar_c)
 		if hotbar ~= nil then
 			---@type {characterHandle:number}
 			local main = hotbar:GetRoot()
@@ -1456,15 +1467,14 @@ function TooltipData:Create(data, uiType)
 	local tt = {
 		Data = data,
 		ControllerEnabled = RequestProcessor.ControllerEnabled or false,
-		IsExtended = true,
 		UIType = uiType
 	}
 	setmetatable(tt, {
 		__index = function(tbl, k)
 			if k == "Instance" then
-				return Ext.GetUIByType(tbl.UIType)
+				return _GetUIByType(tbl.UIType)
 			elseif k == "Root" then
-				local ui = Ext.GetUIByType(tbl.UIType)
+				local ui = _GetUIByType(tbl.UIType)
 				if ui then
 					return ui:GetRoot()
 				end
@@ -1735,7 +1745,7 @@ end
 
 local function CaptureBuiltInUIs()
 	for i = 1,150 do
-		local ui = Ext.GetUIByType(i)
+		local ui = _GetUIByType(i)
 		if ui ~= nil then
 			ui:CaptureExternalInterfaceCalls()
 			ui:CaptureInvokes()
@@ -1744,7 +1754,7 @@ local function CaptureBuiltInUIs()
 end
 
 local function EnableHooks()
-	RequestProcessor.ControllerEnabled = (Ext.GetBuiltinUI("Public/Game/GUI/msgBox_c.swf") or Ext.GetUIByType(_UITYPE.msgBox_c)) ~= nil
+	RequestProcessor.ControllerEnabled = (Ext.GetBuiltinUI("Public/Game/GUI/msgBox_c.swf") or _GetUIByType(_UITYPE.msgBox_c)) ~= nil
 
 	if TooltipHooks.InitializationRequested then
 		TooltipHooks:Init()
@@ -1753,16 +1763,18 @@ local function EnableHooks()
 	CaptureBuiltInUIs()
 end
 
-Ext.RegisterListener("GameStateChanged", function(lastState, nextState)
-	if nextState == "Menu" then
+local _highPriority = {Priority = 999}
+
+Ext.Events.GameStateChanged:Subscribe(function (e)
+	if e.ToState == "Menu" then
 		EnableHooks()
 	end
-end)
+end, _highPriority)
 
-Ext.RegisterListener("SessionLoaded", function()
+Ext.Events.SessionLoaded:Subscribe(function (e)
 	TooltipHooks.SessionLoaded = true
 	EnableHooks()
-end)
+end, _highPriority)
 
 ---@param ui UIObject
 local function OnUICreated(ui)
@@ -1778,12 +1790,6 @@ local function OnUICreated(ui)
 	end
 end
 
-if _EXTVERSION < 56 then
-	---@param ui UIObject
-	Ext.RegisterListener("UIObjectCreated", OnUICreated)
-else
-	---@diagnostic disable-next-line undefined-field
-	Ext.Events.UIObjectCreated:Subscribe(function (e)
-		OnUICreated(e.UI)
-	end)
-end
+Ext.Events.UIObjectCreated:Subscribe(function (e)
+	OnUICreated(e.UI)
+end, _highPriority)

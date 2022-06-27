@@ -36,7 +36,8 @@ local TooltipCalls = {
 	CustomStat = "showCustomStatTooltip",
 	Rune = "showRuneTooltip",
 	Pyramid = "pyramidOver",
-	World = "updateTooltips",
+	-- World = "updateTooltips",
+	-- WorldHover = "setText",
 }
 
 local TooltipInvokes = {
@@ -120,7 +121,7 @@ end
 ---@return EclCharacter|nil
 local function _GetClientCharacter()
 	local character = nil
-	if not Vars.ControllerEnabled then
+	if not RequestProcessor.ControllerEnabled then
 		local ui = _GetUIByType(_UITYPE.hotBar)
 		if ui ~= nil then
 			local this = ui:GetRoot()
@@ -187,33 +188,33 @@ local function _CreateRequest()
 	--Support lifetime changes by getting the object on the fly
 	setmetatable(request, {
 		__index = function(tbl,k)
-			if k == "Character" or k == "Item" or k == "RuneItem" or k then
-				if request.ObjectHandleDouble then
-					return _GetObjectFromDouble(request.ObjectHandleDouble)
+			if k == "Character" or k == "Item" or k == "RuneItem" or k == "Object" then
+				local objectHandleDouble = rawget(tbl, "ObjectHandleDouble")
+				if objectHandleDouble then
+					return _GetObjectFromDouble(objectHandleDouble)
 				end
-			elseif k == "Status" then
-				if request.StatusHandleDouble and request.ObjectHandleDouble then
-					local handle = _DoubleToHandle(request.ObjectHandleDouble)
-					local statusHandle = _DoubleToHandle(request.StatusHandleDouble)
-					if _IsValidHandle(handle) and _IsValidHandle(statusHandle) then
-						return Ext.Entity.GetStatus(handle, statusHandle)
-					end
-				end
-			elseif k == "StatusId" then
-				if request.StatusHandleDouble and request.ObjectHandleDouble then
-					local handle = _DoubleToHandle(request.ObjectHandleDouble)
+			elseif k == "Status" or k == "StatusId" then
+				local objectHandleDouble = rawget(tbl, "ObjectHandleDouble")
+				local statusHandleDouble = rawget(tbl, "StatusHandleDouble")
+				if statusHandleDouble and objectHandleDouble then
+					local handle = _DoubleToHandle(objectHandleDouble)
 					local statusHandle = _DoubleToHandle(request.StatusHandleDouble)
 					if _IsValidHandle(handle) and _IsValidHandle(statusHandle) then
 						local status = Ext.Entity.GetStatus(handle, statusHandle)
 						if status then
-							request.StatusId = status.StatusId
-							return status.StatusId
+							if k == "StatusId" then
+								rawset(tbl, "StatusId", status.StatusId)
+								return status.StatusId
+							else
+								return status
+							end
 						end
 					end
 				end
 			elseif k == "Rune" then
-				if request.StatsId ~= nil and request.StatsId ~= "" then
-					return Ext.GetStat(request.StatsId)
+				local statsId = rawget(tbl, "StatsId")
+				if statsId ~= nil and statsId ~= "" then
+					return Ext.GetStat(statsId)
 				end
 			end
 		end
@@ -513,31 +514,19 @@ RequestProcessor.CallbackHandler[TooltipInvokes.Surface] = function(request, ui,
 	return request
 end
 
-RequestProcessor.CallbackHandler[TooltipCalls.World] = function(request, ui, uiType, event, text, x, y, isItem, item)
-	request.Type = "World"
-	request.Text = text
-	if isItem and item then
-		request.ObjectHandleDouble = _HandleToDouble(item.Handle)
-		request.IsFromItem = true
-	else
-		request.IsFromItem = false
-	end
-	return request
-end
-
 ---The last double handle of the object under the cursor in KB+M mode, when the context menu was opened.
 ---@type number|nil
 local lastCursorObjectDoubleHandle = nil
 
 local function _CaptureCursorObject(ui, event)
-	local cursor = Ext.GetPickingState()
+	local cursor = Ext.UI.GetPickingState()
 	if cursor then
 		if _IsValidHandle(cursor.HoverCharacter) then
-			lastCursorObjectDoubleHandle = Ext.HandleToDouble(cursor.HoverCharacter)
+			lastCursorObjectDoubleHandle = _HandleToDouble(cursor.HoverCharacter)
 		elseif _IsValidHandle(cursor.HoverCharacter2) then
-			lastCursorObjectDoubleHandle = Ext.HandleToDouble(cursor.HoverCharacter2)
+			lastCursorObjectDoubleHandle = _HandleToDouble(cursor.HoverCharacter2)
 		elseif _IsValidHandle(cursor.HoverItem) then
-			lastCursorObjectDoubleHandle = Ext.HandleToDouble(cursor.HoverItem)
+			lastCursorObjectDoubleHandle = _HandleToDouble(cursor.HoverItem)
 		end
 	end
 end
@@ -567,7 +556,7 @@ function RequestProcessor.OnExamineTooltip(ui, method, typeIndex, id, ...)
 	local request = _CreateRequest()
 
 	if object then
-		request.ObjectHandleDouble = Ext.UI.HandleToDouble(object.Handle)
+		request.ObjectHandleDouble = _HandleToDouble(object.Handle)
 	end
 
 	if typeIndex == 1 then
@@ -730,6 +719,29 @@ function RequestProcessor.OnGenericTooltip(ui, call, text, x, y, width, height, 
 		RequestProcessor.Tooltip.Last.Event = call
 		RequestProcessor.Tooltip.Last.UIType = request.UIType
 	end
+end
+
+function RequestProcessor.SetWorldTooltipRequest(request, ui, uiType, event, text, x, y, isItem, item)
+	request.Type = "World"
+	request.Text = text
+	request.IsFromItem = false
+	if isItem and item then
+		request.ObjectHandleDouble = _HandleToDouble(item.Handle)
+		request.IsFromItem = true
+	end
+	return request
+end
+
+function RequestProcessor.SetWorldHoverTooltipRequest(request, ui, uiType, event, text, levelText, bool)
+	request.Type = "WorldHover"
+	request.Text = text
+	request.IsFromItem = false
+	local cursor = Ext.UI.GetPickingState()
+	if cursor and _IsValidHandle(cursor.HoverItem) then
+		request.ObjectHandleDouble = _HandleToDouble(cursor.HoverItem)
+		request.IsFromItem = true
+	end
+	return request
 end
 
 ---@param requestType string
@@ -927,6 +939,20 @@ function RequestProcessor:Init(tooltip)
 		end)
 	end
 
+	--[enemyHealthBar(42)][invoke] setText("<font color="#ffffff">Barrel</font>", "Level 1", false)
+	Ext.RegisterUITypeInvokeListener(_UITYPE.enemyHealthBar, "setText", function(ui, event, text, levelText, bool)
+		if text and text ~= "" then
+			local request = _CreateRequest()
+			local b,r = xpcall(RequestProcessor.SetWorldHoverTooltipRequest, debug.traceback, request, ui, _UITYPE.enemyHealthBar, event, text, levelText, bool)
+			if b then
+				RequestProcessor.Tooltip.NextRequest = r
+				request = RequestProcessor.Tooltip.NextRequest
+			else
+				Ext.Utils.PrintError(string.format("[Game.Tooltips.RequestProcessor] Error invoking tooltip handler for event (%s):\n%s", event, r))
+			end
+		end
+	end, "Before")
+
 	--Generic tooltips
 	Ext.RegisterUINameCall("showTooltip", function(ui, ...)
 		if ui:GetTypeId() == _UITYPE.examine then
@@ -943,27 +969,29 @@ local function _CreateWorldTooltipRequest(ui, event, text, x, y, isItem, item)
 	---@type TooltipWorldRequest
 	local request = _CreateRequest()
 	RequestProcessor.Tooltip:InvokeRequestListeners(request, "before", ui, uiType, event, text, x, y, isItem, item)
-	if RequestProcessor.CallbackHandler[event] then
-		local b,r = xpcall(RequestProcessor.CallbackHandler[event], debug.traceback, request, ui, uiType, event, text, x, y, isItem, item)
-		if b then
-			request = r
-			RequestProcessor.Tooltip.NextRequest = request
-		else
-			Ext.Utils.PrintError(string.format("[Game.Tooltip.RequestProcessor:_CreateWorldTooltipRequest] Error invoking tooltip handler for event (%s):\n%s", event, r))
-		end
+	local b,r = xpcall(RequestProcessor.SetWorldTooltipRequest, debug.traceback, request, ui, uiType, event, text, x, y, isItem, item)
+	if b then
+		request = r
+		RequestProcessor.Tooltip.NextRequest = request
+	else
+		Ext.Utils.PrintError(string.format("[Game.Tooltip.RequestProcessor:_CreateWorldTooltipRequest] Error invoking tooltip handler for event (%s):\n%s", event, r))
 	end
+
 	RequestProcessor.Tooltip.Last.Event = event
 	RequestProcessor.Tooltip.Last.UIType = uiType
 	RequestProcessor.Tooltip.Last.Request = request
 
 	RequestProcessor.Tooltip:InvokeRequestListeners(request, "after", ui, uiType, event, text, x, y, isItem, item)
 
-	local tooltipData = TooltipData:Create({{
+	local tooltipData = Game.Tooltip.TooltipData:Create({{
 		Type = "Description",
-		Label = text
-	}}, ui:GetTypeId())
+		Label = text,
+		X = x,
+		Y = y,
+	}}, uiType)
 
-	RequestProcessor.Tooltip:NotifyListeners("World", nil, request, tooltipData, request.Text, request.Item)
+	RequestProcessor.Tooltip:NotifyListeners("World", nil, request, tooltipData, request.Item)
+
 	local desc = tooltipData:GetDescriptionElement()
 	return desc and desc.Label or nil
 end
