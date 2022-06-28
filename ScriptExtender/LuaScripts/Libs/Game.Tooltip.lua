@@ -13,11 +13,25 @@ local table = table
 local tostring = tostring
 local type = type
 local xpcall = xpcall
+
 local _EXTVERSION = Ext.Version()
 local _DEBUG = Ext.IsDeveloperMode()
 local _UITYPE = Ext.UI.TypeID
 
-local _GetUIByType = Ext.UI.GetByType
+local GetCharacter = Ext.Entity.GetCharacter
+local GetUIByType = Ext.UI.GetByType
+local HandleToDouble = Ext.UI.HandleToDouble
+local DoubleToHandle = Ext.UI.DoubleToHandle
+local IsValidHandle = Ext.Utils.IsValidHandle
+local Stringify = Ext.Json.Stringify
+local _RegisterUITypeInvokeListener = Ext.RegisterUITypeInvokeListener
+local _RegisterRegisterUITypeCall = Ext.RegisterUITypeCall
+local _RegisterUINameCall = Ext.RegisterUINameCall
+local _RegisterUINameInvokeListener = Ext.RegisterUINameInvokeListener
+local _Print = Ext.Utils.Print
+local _PrintWarning = Ext.Utils.PrintWarning
+local _PrintError = Ext.Utils.PrintError
+local _Dump = Ext.Dump
 
 if Game == nil then
 	Game = {}
@@ -457,7 +471,7 @@ end
 
 function ParseTooltipElement(tt, index, spec, typeName)
 	if #tt - index + 1 < #spec then
-		Ext.PrintError("Not enough fields to parse spec @" .. index)
+		_PrintError("Not enough fields to parse spec @" .. index)
 		return
 	end
 
@@ -468,7 +482,7 @@ function ParseTooltipElement(tt, index, spec, typeName)
 			element[field[1]] = val
 		end
 		if _DEBUG and (field[2] ~= nil and type(val) ~= field[2]) then
-			Ext.PrintWarning("Type of field " .. typeName .. "." .. field[1] .. " differs: " .. type(val) .. " vs " .. field[2] .. ":", val)
+			_PrintWarning("Type of field " .. typeName .. "." .. field[1] .. " differs: " .. type(val) .. " vs " .. field[2] .. ":", val)
 		end
 	end
 
@@ -559,7 +573,7 @@ function ParseTooltipArray(tt)
 		index = index + 1
 
 		if TooltipItemIds[id] == nil then
-			Ext.PrintError("Encountered unknown tooltip item type: ", id)
+			_PrintError("Encountered unknown tooltip item type: ", id)
 			return elements
 		end
 
@@ -571,7 +585,7 @@ function ParseTooltipArray(tt)
 		else
 			local spec = TooltipSpecs[typeName]
 			if spec == nil then
-				Ext.PrintError("No spec available for tooltip item type: ", typeName)
+				_PrintError("No spec available for tooltip item type: ", typeName)
 				return elements
 			end
 
@@ -597,7 +611,7 @@ function EncodeTooltipElement(tt, spec, element)
 		else
 			if fieldType ~= nil and type(val) ~= fieldType then
 				if _DEBUG then
-					Ext.PrintWarning("Type of field " .. element.Type .. "." .. name .. " differs: " .. type(val) .. " vs " .. fieldType .. ":", val)
+					_PrintWarning("Type of field " .. element.Type .. "." .. name .. " differs: " .. type(val) .. " vs " .. fieldType .. ":", val)
 				end
 				val = nil
 			end
@@ -666,8 +680,8 @@ function EncodeTooltipArray(elements)
 			local type = TooltipItemTypes[element.Type]
 			if type == nil then
 				if _DEBUG then
-					Ext.PrintError("Couldn't encode tooltip element with unknown type:", element.Type)
-					Ext.Dump(element)
+					_PrintError("Couldn't encode tooltip element with unknown type:", element.Type)
+					_Dump(element)
 				end
 			else
 				if element.Type == "SkillProperties" then
@@ -680,8 +694,8 @@ function EncodeTooltipArray(elements)
 					local spec = TooltipSpecs[element.Type]
 					if spec == nil then
 						if _DEBUG then
-							Ext.PrintError("No encoder found for tooltip element type:", element.Type)
-							Ext.Dump(element)
+							_PrintError("No encoder found for tooltip element type:", element.Type)
+							_Dump(element)
 						end
 					else
 						table.insert(tt, type)
@@ -706,17 +720,18 @@ function DebugTooltipEncoding(ui)
 		tooltipArray2[i] = s
 	end
 
-	Ext.Print("tooltip_array: " .. Ext.Json.Stringify(tooltipArray2))
+	_Print("tooltip_array: " .. Stringify(tooltipArray2))
 	local parsed = ParseTooltipArray(tooltipArray)
-	Ext.Print("Parsed: " .. Ext.Json.Stringify(parsed))
+	_Print("Parsed: " .. Stringify(parsed))
 	local encoded = EncodeTooltipArray(parsed)
 	local parsed2 = ParseTooltipArray(encoded)
-	Ext.Print("Encoding matches: ", Ext.Json.Stringify(parsed2) == Ext.Json.Stringify(parsed))
+	_Print("Encoding matches: ", Stringify(parsed2) == Stringify(parsed))
 end
 
 ---@class TooltipRequest:table
 ---@field Type GameTooltipType
----@field UIType integer
+---@field UIType integer The UI type ID for the UI that initially called for a tooltip.
+---@field TooltipUIType integer The UI type ID for the tooltip UI.
 ---@field ObjectHandleDouble number|nil
 
 ---@class TooltipItemRequest:TooltipRequest
@@ -762,7 +777,8 @@ end
 ---@class TooltipCustomStatRequest:TooltipRequest
 ---@field Character EclCharacter
 ---@field Stat number The stat handle.
----@field StatData table
+---@field StatIndex integer The stat index in the characterSheet array.
+---@field StatData {ID:string, __tostring:fun(tbl:table):string}|nil Custom stats data that returns a string ID via the metamethod __tostring. Must be implemented by a mod, otherwise this is nil.
 
 ---@class TooltipSurfaceRequest:TooltipRequest
 ---@field Character EclCharacter
@@ -787,6 +803,15 @@ end
 ---@field Y number
 ---@field IsFromItem boolean
 ---@field Item EclItem|nil
+
+---@class TooltipPlayerPortraitRequest:TooltipRequest
+---@field Text string Set this to change the resulting tooltip text.
+---@field X number
+---@field Y number
+---@field Width number|nil
+---@field Height number|nil
+---@field Side string|nil
+---@field Character EclCharacter
 
 local previousListeners = {}
 
@@ -904,33 +929,33 @@ local TooltipArrayNames = {
 Game.Tooltip.TooltipArrayNames = TooltipArrayNames
 
 function TooltipHooks:RegisterControllerHooks()
-	Ext.RegisterUITypeInvokeListener(_UITYPE.equipmentPanel_c, "updateTooltip", function (ui, ...)
+	_RegisterUITypeInvokeListener(_UITYPE.equipmentPanel_c, "updateTooltip", function (ui, ...)
 		self:OnRenderTooltip(TooltipArrayNames.Console.EquipmentPanel, ui, ...)
 	end)
-	Ext.RegisterUITypeInvokeListener(_UITYPE.equipmentPanel_c, "updateEquipTooltip", function (ui, ...)
+	_RegisterUITypeInvokeListener(_UITYPE.equipmentPanel_c, "updateEquipTooltip", function (ui, ...)
 		self:OnRenderTooltip(TooltipArrayNames.Console.EquipmentPanel, ui, ...)
 	end)
 
-	Ext.RegisterUITypeInvokeListener(_UITYPE.craftPanel_c, "updateTooltip", function (ui, ...)
+	_RegisterUITypeInvokeListener(_UITYPE.craftPanel_c, "updateTooltip", function (ui, ...)
 		self:OnRenderTooltip(TooltipArrayNames.Console.CraftPanel, ui, ...)
 	end)
 
-	Ext.RegisterUITypeInvokeListener(_UITYPE.statsPanel_c, "showTooltip", function (ui, ...)
+	_RegisterUITypeInvokeListener(_UITYPE.statsPanel_c, "showTooltip", function (ui, ...)
 		self:OnRenderTooltip(TooltipArrayNames.Console.StatsPanel, ui, ...)
 	end)
 
-	Ext.RegisterUITypeInvokeListener(_UITYPE.examine_c, "showFormattedTooltip", function (ui, ...)
+	_RegisterUITypeInvokeListener(_UITYPE.examine_c, "showFormattedTooltip", function (ui, ...)
 		self:OnRenderTooltip(TooltipArrayNames.Console.Examine, ui, ...)
 	end)
 	
-	Ext.RegisterUITypeInvokeListener(_UITYPE.bottomBar_c, "updateTooltip", function (...)
+	_RegisterUITypeInvokeListener(_UITYPE.bottomBar_c, "updateTooltip", function (...)
 		self:OnRenderTooltip(TooltipArrayNames.Console.BottomBar, ...)
 	end)
-	Ext.RegisterUITypeInvokeListener(_UITYPE.bottomBar_c, "setPlayerHandle", function (ui, method, doubleHandle)
+	_RegisterUITypeInvokeListener(_UITYPE.bottomBar_c, "setPlayerHandle", function (ui, method, doubleHandle)
 		if doubleHandle ~= nil and doubleHandle ~= 0 then
-			local handle = Ext.UI.DoubleToHandle(doubleHandle)
-			if Ext.Utils.IsValidHandle(handle) then
-				local character = Ext.GetCharacter(handle)
+			local handle = DoubleToHandle(doubleHandle)
+			if IsValidHandle(handle) then
+				local character = GetCharacter(handle)
 				if character then
 					ControllerVars.LastPlayer = character.NetID
 				end
@@ -942,12 +967,12 @@ function TooltipHooks:RegisterControllerHooks()
 	self.GetLastPlayer = function(self)
 		if RequestProcessor.ControllerEnabled then
 			if ControllerVars.LastPlayer then
-				local character = Ext.GetCharacter(ControllerVars.LastPlayer)
+				local character = GetCharacter(ControllerVars.LastPlayer)
 				if character then
 					return character
 				end
 			end
-			local ui = _GetUIByType(_UITYPE.bottomBar_c)
+			local ui = GetUIByType(_UITYPE.bottomBar_c)
 			if ui then
 				---@type {characterHandle:number}
 				local this = ui:GetRoot()
@@ -962,24 +987,24 @@ function TooltipHooks:RegisterControllerHooks()
 		end
 	end
 
-	Ext.RegisterUITypeInvokeListener(_UITYPE.partyInventory_c, "updateTooltip", function (...)
+	_RegisterUITypeInvokeListener(_UITYPE.partyInventory_c, "updateTooltip", function (...)
 		self:OnRenderTooltip(TooltipArrayNames.Console.PartyInventory, ...)
 	end)
 
-	Ext.RegisterUITypeInvokeListener(_UITYPE.reward_c, "updateTooltipData", function (ui, method, ...)
+	_RegisterUITypeInvokeListener(_UITYPE.reward_c, "updateTooltipData", function (ui, method, ...)
 		self:OnRenderTooltip(TooltipArrayNames.Console.Reward, ui, method, ...)
 	end)
 
-	Ext.RegisterUITypeInvokeListener(_UITYPE.characterCreation_c, "showTooltip", function(...)
+	_RegisterUITypeInvokeListener(_UITYPE.characterCreation_c, "showTooltip", function(...)
 		self:OnRenderTooltip(TooltipArrayNames.Console.CharacterCreation, ...)
 	end)
 
-	Ext.RegisterUITypeInvokeListener(_UITYPE.trade_c, "updateTooltip", function(...)
+	_RegisterUITypeInvokeListener(_UITYPE.trade_c, "updateTooltip", function(...)
 		self:OnRenderTooltip(TooltipArrayNames.Console.Trade, ...)
 	end)
 
 	-- This allows examine_c to have a character reference
-	Ext.RegisterUITypeInvokeListener(_UITYPE.overhead, "updateOHs", function (ui, method, ...)
+	_RegisterUITypeInvokeListener(_UITYPE.overhead, "updateOHs", function (ui, method, ...)
 		if RequestProcessor.ControllerEnabled then
 			---@type {selectionInfo_array:FlashArray<number>}
 			local main = ui:GetRoot()
@@ -1003,20 +1028,20 @@ function TooltipHooks:Init()
 
 	RequestProcessor:Init(TooltipHooks)
 
-	Ext.RegisterUINameInvokeListener("addFormattedTooltip", function (...)
+	_RegisterUINameInvokeListener("addFormattedTooltip", function (...)
 		self:OnRenderTooltip(TooltipArrayNames.Default, ...)
 	end)
 
-	Ext.RegisterUINameInvokeListener("addStatusTooltip", function (...)
+	_RegisterUINameInvokeListener("addStatusTooltip", function (...)
 		self:OnRenderTooltip(TooltipArrayNames.Default, ...)
 	end)
 
-	Ext.RegisterUINameInvokeListener("displaySurfaceText", function (...)
+	_RegisterUINameInvokeListener("displaySurfaceText", function (...)
 		self:OnRenderTooltip(TooltipArrayNames.Surface, ...)
 	end, "After")
 
 	--Disabled for now since character portrait tooltips get spammed
-	-- Ext.RegisterUINameCall("showCharTooltip", function(ui, call, handle, x, y, width, height, side)
+	-- _RegisterUINameCall("showCharTooltip", function(ui, call, handle, x, y, width, height, side)
 	-- 	self.NextRequest = {
 	-- 		Type = "Generic",
 	-- 		IsCharacterTooltip = true,
@@ -1029,18 +1054,18 @@ function TooltipHooks:Init()
 	-- 	}
 	-- end, "Before")
 	
-	Ext.RegisterUINameInvokeListener("addTooltip", function (ui, call, text, ...)
+	_RegisterUINameInvokeListener("addTooltip", function (ui, call, text, ...)
 		self:OnRenderGenericTooltip(ui, call, text, ...)
 	end)
 
-	Ext.RegisterUINameCall("hideTooltip", function (ui, call, ...)
+	_RegisterUINameCall("hideTooltip", function (ui, call, ...)
 		self.IsOpen = false
 		self.ActiveType = ""
 		if self.NextRequest and self.NextRequest.Type == "Generic" then
 			self.Last.Request = self.NextRequest
 			self.NextRequest = nil
 		end
-		local tt = _GetUIByType(_UITYPE.tooltip)
+		local tt = GetUIByType(_UITYPE.tooltip)
 		if tt then
 			if #tooltipCustomIcons > 0 then
 				for _,v in pairs(tooltipCustomIcons) do
@@ -1051,7 +1076,7 @@ function TooltipHooks:Init()
 		end
 	end)
 
-	Ext.RegisterUINameCall("keepUIinScreen", function (ui, method, keepUIinScreen)
+	_RegisterUINameCall("keepUIinScreen", function (ui, method, keepUIinScreen)
 		if self.GenericTooltipData then
 			self:UpdateGenericTooltip(ui, method, keepUIinScreen)
 		end
@@ -1078,15 +1103,21 @@ function TooltipHooks:UpdateGenericTooltip(ui, method, keepUIinScreen)
 	self.GenericTooltipData = nil
 end
 
+local _GenericTooltipTypes = {
+	Generic = true,
+	WorldHover = true,
+	PlayerPortrait = true,
+}
+
 ---@param ui UIObject
 ---@param method string
 function TooltipHooks:OnRenderGenericTooltip(ui, method, text, x, y, allowDelay, anchorEnum, backgroundType)
-	---@type TooltipGenericRequest
+	---@type TooltipGenericRequest|TooltipPlayerPortraitRequest|TooltipWorldRequest
 	local req = self.NextRequest
 	if not req then
 		return
 	end
-	if req.Type == "Generic" or req.Type == "WorldHover" then
+	if _GenericTooltipTypes[req.Type] then
 		if req.Type == "WorldHover" then
 			req.Type = "World"
 		end
@@ -1112,17 +1143,19 @@ function TooltipHooks:OnRenderGenericTooltip(ui, method, text, x, y, allowDelay,
 			Label = text,
 			X = x,
 			Y = y,
-		}}, ui:GetTypeId())
+		}}, ui:GetTypeId(), req.UIType)
 
 		if req.Type == "World" then
 			local item = req.Item
 			if item then
-				self:NotifyListeners(req.Type, item.StatsId, req, tooltipData, item)
+				self:NotifyListeners("World", item.StatsId, req, tooltipData, item)
 			else
-				self:NotifyListeners(req.Type, nil, req, tooltipData, nil)
+				self:NotifyListeners("World", nil, req, tooltipData, nil)
 			end
+		elseif req.Type == "PlayerPortrait" then
+			self:NotifyListeners("PlayerPortrait", nil, req, tooltipData, req.Character)
 		else
-			self:NotifyListeners(req.Type, nil, req, tooltipData)
+			self:NotifyListeners("Generic", nil, req, tooltipData)
 		end
 	
 		local desc = tooltipData:GetDescriptionElement()
@@ -1145,7 +1178,7 @@ function TooltipHooks:GetCompareOwner(ui, item)
 	local owner = ui:GetPlayerHandle()
 
 	if owner ~= nil then
-		local char = Ext.GetCharacter(owner)
+		local char = GetCharacter(owner)
 		if char.Stats.IsPlayer then
 			return char
 		end
@@ -1153,27 +1186,27 @@ function TooltipHooks:GetCompareOwner(ui, item)
 
 	local handle = nil
 	if not RequestProcessor.ControllerEnabled then
-		local hotbar = _GetUIByType(_UITYPE.hotBar)
+		local hotbar = GetUIByType(_UITYPE.hotBar)
 		if hotbar ~= nil then
 			---@type {hotbar_mc:{characterHandle:number}}
 			local main = hotbar:GetRoot()
 			if main ~= nil then
-				handle = Ext.DoubleToHandle(main.hotbar_mc.characterHandle)
+				handle = DoubleToHandle(main.hotbar_mc.characterHandle)
 			end
 		end
 	else
-		local hotbar = _GetUIByType(_UITYPE.bottomBar_c)
+		local hotbar = GetUIByType(_UITYPE.bottomBar_c)
 		if hotbar ~= nil then
 			---@type {characterHandle:number}
 			local main = hotbar:GetRoot()
 			if main ~= nil then
-				handle = Ext.DoubleToHandle(main.characterHandle)
+				handle = DoubleToHandle(main.characterHandle)
 			end
 		end
 	end
 
 	if handle ~= nil then
-		return Ext.GetCharacter(handle)
+		return GetCharacter(handle)
 	end
 
 	local character = RequestProcessor.Utils.GetClientCharacter()
@@ -1182,7 +1215,7 @@ function TooltipHooks:GetCompareOwner(ui, item)
 		--Fallback to the item's owner last, since it may not be the active character.
 		local itemOwner = item:GetOwnerCharacter()
 		if itemOwner ~= nil then
-			local ownerCharacter = Ext.GetCharacter(itemOwner)
+			local ownerCharacter = GetCharacter(itemOwner)
 			if ownerCharacter ~= nil and ownerCharacter.Stats.IsPlayer then
 				return ownerCharacter
 			end
@@ -1202,24 +1235,24 @@ function TooltipHooks:GetCompareItem(ui, item, offHand)
 	local char = self:GetCompareOwner(ui, item)
 
 	if char == nil then
-		Ext.PrintWarning("Tooltip compare render failed: Couldn't find owner of item", item.StatsId)
+		_PrintWarning("Tooltip compare render failed: Couldn't find owner of item", item.StatsId)
 		return nil
 	end
 
 	if item.Stats.ItemSlot == "Weapon" then
 		if offHand then
-			return char:GetItemBySlot("Shield")
+			return char:GetItemObjectBySlot("Shield")
 		else
-			return char:GetItemBySlot("Weapon")
+			return char:GetItemObjectBySlot("Weapon")
 		end
 	elseif item.Stats.ItemSlot == "Ring" or item.Stats.ItemSlot == "Ring2" then
 		if offHand then
-			return char:GetItemBySlot("Ring2")
+			return char:GetItemObjectBySlot("Ring2")
 		else
-			return char:GetItemBySlot("Ring")
+			return char:GetItemObjectBySlot("Ring")
 		end
 	else
-		return char:GetItemBySlot(item.Stats.ItemSlot)
+		return char:GetItemObjectBySlot(item.Stats.ItemSlot)
 	end
 end
 
@@ -1228,7 +1261,7 @@ end
 function TooltipHooks:OnRenderTooltip(arrayData, ui, method, ...)
 	if self.NextRequest == nil then
 		if _DEBUG then
-			Ext.PrintWarning(string.format("[Game.Tooltip] Got tooltip render request, but did not find original tooltip info! method(%s)", method))
+			_PrintWarning(string.format("[Game.Tooltip] Got tooltip render request, but did not find original tooltip info! method(%s)", method))
 		end
 		return
 	end
@@ -1253,11 +1286,11 @@ function TooltipHooks:OnRenderTooltip(arrayData, ui, method, ...)
 			local compareItem = self:GetCompareItem(ui, reqItem, false)
 			if compareItem ~= nil then
 				local lastObjectHandle = req.ObjectHandleDouble
-				req.ObjectHandleDouble = Ext.UI.HandleToDouble(compareItem.Handle)
+				req.ObjectHandleDouble = HandleToDouble(compareItem.Handle)
 				self:OnRenderSubTooltip(ui, arrayData.CompareMain, req, method, ...)
 				req.ObjectHandleDouble = lastObjectHandle
 			else
-				Ext.PrintError("Tooltip compare render failed: Couldn't find item to compare")
+				_PrintError("Tooltip compare render failed: Couldn't find item to compare")
 			end
 		end
 
@@ -1265,11 +1298,11 @@ function TooltipHooks:OnRenderTooltip(arrayData, ui, method, ...)
 			local compareItem = self:GetCompareItem(ui, reqItem, true)
 			if compareItem ~= nil then
 				local lastObjectHandle = req.ObjectHandleDouble
-				req.ObjectHandleDouble = Ext.UI.HandleToDouble(compareItem.Handle)
+				req.ObjectHandleDouble = HandleToDouble(compareItem.Handle)
 				self:OnRenderSubTooltip(ui, arrayData.CompareOff, req, method, ...)		
 				req.ObjectHandleDouble = lastObjectHandle
 			else
-				Ext.PrintError("Tooltip compare render failed: Couldn't find off-hand item to compare")
+				_PrintError("Tooltip compare render failed: Couldn't find off-hand item to compare")
 			end
 		end
 	end
@@ -1286,13 +1319,13 @@ function TooltipHooks:OnRenderSubTooltip(ui, propertyName, req, method, ...)
 	local tt = TableFromFlash(ui, propertyName)
 	local params = ParseTooltipArray(tt)
 	if params ~= nil then
-		local tooltip = TooltipData:Create(params, ui:GetTypeId())
+		local tooltip = TooltipData:Create(params, ui:GetTypeId(), req.UIType)
 		self:InvokeBeforeNotifyListeners(req, ui, method, tooltip, ...)
 		if req.Type == "Stat" then
 			self:NotifyListeners("Stat", req.Stat, req, tooltip, req.Character, req.Stat)
 		elseif req.Type == "CustomStat" then
 			if req.StatData ~= nil then
-				self:NotifyListeners("CustomStat", req.StatData.ID or req.StatData.UUID, req, tooltip, req.Character, req.StatData)
+				self:NotifyListeners("CustomStat", tostring(req.StatData), req, tooltip, req.Character, req.StatData)
 			else
 				self:NotifyListeners("CustomStat", nil, req, tooltip, req.Character, {ID=req.Stat})
 			end
@@ -1305,9 +1338,9 @@ function TooltipHooks:OnRenderSubTooltip(ui, propertyName, req, method, ...)
 		elseif req.Type == "Status" then
 			self:NotifyListeners("Status", req.StatusId, req, tooltip, req.Character, req.Status)
 		elseif req.Type == "Item" then
-			self:NotifyListeners("Item", nil, req, tooltip, req.Item)
+			self:NotifyListeners("Item", req.StatsId, req, tooltip, req.Item)
 		elseif req.Type == "Pyramid" then
-			self:NotifyListeners("Pyramid", nil, req, tooltip, req.Item)
+			self:NotifyListeners("Pyramid", req.StatsId, req, tooltip, req.Item)
 		elseif req.Type == "Rune" then
 			self:NotifyListeners("Rune", req.StatsId, req, tooltip, req.Item, req.Rune, req.Slot)
 		elseif req.Type == "Tag" then
@@ -1325,10 +1358,12 @@ function TooltipHooks:OnRenderSubTooltip(ui, propertyName, req, method, ...)
 		elseif req.Type == "World" then
 			-- Manually invoked in RequestProcessor, so the text array can be updated
 			---@see GameTooltipRequestProcessorInternals#CreateWorldTooltipRequest
+		elseif req.Type == "PlayerPortrait" then
+			---@see TooltipHooks#OnRenderGenericTooltip
 		elseif req.Type == "Generic" then
-			-- Skip since it's handled in addTooltip
+			---@see TooltipHooks#OnRenderGenericTooltip
 		else
-			Ext.PrintError("Unknown tooltip type? ", req.Type)
+			_PrintError("Unknown tooltip type? ", req.Type)
 		end
 
 		local newTooltip = EncodeTooltipArray(tooltip.Data)
@@ -1343,7 +1378,7 @@ local function InvokeListenerTable(tbl, ...)
 		for _,v in pairs(tbl) do
 			local b,err = xpcall(v, debug.traceback, ...)
 			if not b then
-				Ext.PrintError(err)
+				_PrintError(err)
 			end
 		end
 	end
@@ -1396,7 +1431,7 @@ function TooltipHooks:NotifyAll(listeners, ...)
 	for i,callback in pairs(listeners) do
 		local status, err = xpcall(callback, debug.traceback, ...)
 		if not status then
-			Ext.PrintError("Error during tooltip callback: ", err)
+			_PrintError("Error during tooltip callback: ", err)
 		end
 	end
 end
@@ -1464,6 +1499,7 @@ end
 ---@class TooltipData
 ---@field Data TooltipElement[]
 ---@field ControllerEnabled boolean
+---@field TooltipUIType integer
 ---@field UIType integer
 ---@field Instance UIObject
 ---@field Root FlashMainTimeline
@@ -1472,19 +1508,23 @@ TooltipData = {}
 ---@class GenericTooltipData:TooltipData
 ---@field Data TooltipGenericRequest
 
+---@param data TooltipElement[]
+---@param tooltipUIType integer
+---@param requestingUIType integer
 ---@return TooltipData
-function TooltipData:Create(data, uiType)
+function TooltipData:Create(data, tooltipUIType, requestingUIType)
 	local tt = {
 		Data = data,
 		ControllerEnabled = RequestProcessor.ControllerEnabled or false,
-		UIType = uiType
+		TooltipUIType = tooltipUIType,
+		UIType = requestingUIType
 	}
 	setmetatable(tt, {
 		__index = function(tbl, k)
 			if k == "Instance" then
-				return _GetUIByType(tbl.UIType)
+				return GetUIByType(tooltipUIType)
 			elseif k == "Root" then
-				local ui = _GetUIByType(tbl.UIType)
+				local ui = GetUIByType(tooltipUIType)
 				if ui then
 					return ui:GetRoot()
 				end
@@ -1666,7 +1706,82 @@ function TooltipData:AppendElementBeforeType(ele, elementType)
 	return ele
 end
 
----@alias GameTooltipType string|"Ability"|"CustomStat"|"Generic"|"Item"|"Pyramid"|"Rune"|"Skill"|"Stat"|"Status"|"Tag"|"Talent"
+---@alias GameTooltipType string|"Ability"|"CustomStat"|"Generic"|"Item"|"Pyramid"|"Rune"|"Skill"|"Stat"|"Status"|"Tag"|"Talent"|"World"
+
+Game.Tooltip.Register = {
+	---@param callback fun(request:AnyTooltipRequest, tooltip:TooltipData)
+	Global = function(callback)
+		TooltipHooks:RegisterListener(nil, nil, callback)
+	end,
+	---@param callback fun(character:EclCharacter, ability:StatsAbilityType|string, tooltip:TooltipData)
+	---@param ability StatsAbilityType|nil Optional ability to filter by.
+	Ability = function(callback, ability)
+		TooltipHooks:RegisterListener("Ability", ability, callback)
+	end,
+	---@param callback fun(character:EclCharacter, statData:{ID:string}, tooltip:TooltipData)
+	---@param id string|nil Optional CustomStat ID to filter by.
+	CustomStat = function(callback, id)
+		TooltipHooks:RegisterListener("CustomStat", id, callback)
+	end,
+	---@param callback fun(tooltip:TooltipData)
+	Generic = function(callback)
+		TooltipHooks:RegisterListener("Generic", nil, callback)
+	end,
+	---@param callback fun(item:EclItem, tooltip:TooltipData)
+	---@param statsId string|nil Optional Rune StatsId to filter by.
+	Item = function(callback, statsId)
+		TooltipHooks:RegisterListener("Item", statsId, callback)
+	end,
+	---@param callback fun(item:EclItem, tooltip:TooltipData)
+	---@param statsId string|nil Optional Rune StatsId to filter by.
+	Pyramid = function(callback, statsId)
+		TooltipHooks:RegisterListener("Pyramid", statsId, callback)
+	end,
+	---@param callback fun(item:EclItem, tooltip:TooltipData)
+	---@param statsId string|nil Optional Rune StatsId to filter by.
+	Rune = function(callback, statsId)
+		TooltipHooks:RegisterListener("Rune", statsId, callback)
+	end,
+	---@param callback fun(character:EclCharacter, skill:string, tooltip:TooltipData)
+	---@param skillId string|nil Optional Skill ID to filter by.
+	Skill = function(callback, skillId)
+		TooltipHooks:RegisterListener("Skill", skillId, callback)
+	end,
+	---Register a callback for stat tooltips in the character sheet, such as attributes and resistances.
+	---@param callback fun(character:EclCharacter, stat:StatsCharacterStatGetterType|string, tooltip:TooltipData)
+	---@param id StatsCharacterStatGetterType|string|nil Optional Stat ID to filter by, such as "Damage".
+	Stat = function(callback, id)
+		TooltipHooks:RegisterListener("Stat", id, callback)
+	end,
+	---@param callback fun(character:EclCharacter, status:EclStatus, tooltip:TooltipData)
+	---@param statusId string|nil Optional Status ID to filter by.
+	Status = function(callback, statusId)
+		TooltipHooks:RegisterListener("Status", statusId, callback)
+	end,
+	---@param callback fun(character:EclCharacter, tag:string, tooltip:TooltipData)
+	---@param tag string|nil Optional Tag ID to filter by.
+	Tag = function(callback, tag)
+		TooltipHooks:RegisterListener("Tag", tag, callback)
+	end,
+	---@param callback fun(character:EclCharacter, talent:StatsTalentType|string, tooltip:TooltipData)
+	---@param talentId StatsTalentType|nil Optional Talent ID to filter by.
+	Talent = function(callback, talentId)
+		TooltipHooks:RegisterListener("Talent", talentId, callback)
+	end,
+
+	---Called for both mouse-hovered items, and item names displayed when pressing "Show World Tooltips".
+	---@param callback fun(item:EclItem|nil, tooltip:TooltipData)
+	---@param statsId string|nil Optional item StatsId to filter by.
+	World = function(callback, statsId)
+		TooltipHooks:RegisterListener("World", statsId, callback)
+	end,
+
+	---Called when a tooltip is created when hovering over a player portrait.
+	---@param callback fun(character:EclCharacter|nil, tooltip:TooltipData)
+	PlayerPortrait = function(callback)
+		TooltipHooks:RegisterListener("PlayerPortrait", nil, callback)
+	end,
+}
 
 ---Register a function to call when a tooltip occurs.
 ---Examples:
@@ -1690,7 +1805,7 @@ function Game.Tooltip.RegisterListener(tooltipTypeOrCallback, idOrNil, callbackO
 		local t1 = type(tooltipTypeOrCallback)
 		local t2 = type(idOrNil)
 		local t3 = type(callbackOrNil)
-		Ext.PrintError(string.format("[Game.Tooltip.RegisterListener] Invalid arguments - 1: [%s](%s), 2: [%s](%s), 3: [%s](%s)", tooltipTypeOrCallback, t1, idOrNil, t2, callbackOrNil, t3))
+		_PrintError(string.format("[Game.Tooltip.RegisterListener] Invalid arguments - 1: [%s](%s), 2: [%s](%s), 3: [%s](%s)", tooltipTypeOrCallback, t1, idOrNil, t2, callbackOrNil, t3))
 	end
 end
 
@@ -1755,7 +1870,7 @@ end
 
 local function CaptureBuiltInUIs()
 	for i = 1,150 do
-		local ui = _GetUIByType(i)
+		local ui = GetUIByType(i)
 		if ui ~= nil then
 			ui:CaptureExternalInterfaceCalls()
 			ui:CaptureInvokes()
@@ -1764,7 +1879,7 @@ local function CaptureBuiltInUIs()
 end
 
 local function EnableHooks()
-	RequestProcessor.ControllerEnabled = (Ext.GetBuiltinUI("Public/Game/GUI/msgBox_c.swf") or _GetUIByType(_UITYPE.msgBox_c)) ~= nil
+	RequestProcessor.ControllerEnabled = (Ext.UI.GetByPath("Public/Game/GUI/msgBox_c.swf") or GetUIByType(_UITYPE.msgBox_c)) ~= nil
 
 	if TooltipHooks.InitializationRequested then
 		TooltipHooks:Init()
@@ -1786,8 +1901,9 @@ Ext.Events.SessionLoaded:Subscribe(function (e)
 	EnableHooks()
 end, _highPriority)
 
----@param ui UIObject
-local function OnUICreated(ui)
+Ext.Events.UIObjectCreated:Subscribe(function (e)
+	---@type UIObject
+	local ui = e.UI
 	ui:CaptureExternalInterfaceCalls()
 	-- Has the 'no flash player' warning if the root is nil
 	if ui:GetRoot() ~= nil then
@@ -1798,8 +1914,4 @@ local function OnUICreated(ui)
 			CaptureBuiltInUIs()
 		end, {Once=true})
 	end
-end
-
-Ext.Events.UIObjectCreated:Subscribe(function (e)
-	OnUICreated(e.UI)
 end, _highPriority)
