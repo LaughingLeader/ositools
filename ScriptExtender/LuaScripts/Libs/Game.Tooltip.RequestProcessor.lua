@@ -7,6 +7,24 @@ local _IsValidHandle = Ext.Utils.IsValidHandle
 local _DoubleToHandle = Ext.UI.DoubleToHandle
 local _HandleToDouble = Ext.UI.HandleToDouble
 local _GetUIByType = Ext.UI.GetByType
+local _GetUIGetByPath = Ext.UI.GetByPath
+
+local _GetStat = Ext.Stats.Get
+local _GetTranslatedString = Ext.L10N.GetTranslatedString
+local _GetTranslatedStringFromKey = Ext.L10N.GetTranslatedStringFromKey
+
+local _GetAiGrid = Ext.Entity.GetAiGrid
+local _GetStatus = Ext.Entity.GetStatus
+local _GetGameObject = Ext.Entity.GetGameObject
+local _GetItem = Ext.Entity.GetItem
+local _GetPickingState = Ext.UI.GetPickingState
+
+local _GetGameMode = Ext.Utils.GetGameMode
+
+local _EnumIndexToLabel = Ext.Stats.EnumIndexToLabel
+
+local _PrintWarning = Ext.Utils.PrintWarning
+local _PrintError = Ext.Utils.PrintError
 
 local _UITYPE = Ext.UI.TypeID
 
@@ -23,7 +41,7 @@ local RequestProcessor = {
 local _INTERNAL = {}
 RequestProcessor._Internal = _INTERNAL
 
-RequestProcessor.ControllerEnabled = (Ext.GetBuiltinUI("Public/Game/GUI/msgBox_c.swf") or Ext.GetUIByType(_UITYPE.msgBox_c)) ~= nil
+RequestProcessor.ControllerEnabled = (_GetUIGetByPath("Public/Game/GUI/msgBox_c.swf") or _GetUIByType(_UITYPE.msgBox_c)) ~= nil
 
 local TooltipCalls = {
 	Skill = "showSkillTooltip",
@@ -36,6 +54,7 @@ local TooltipCalls = {
 	CustomStat = "showCustomStatTooltip",
 	Rune = "showRuneTooltip",
 	Pyramid = "pyramidOver",
+	PlayerPortrait = "showCharTooltip",
 	-- World = "updateTooltips",
 	-- WorldHover = "setText",
 }
@@ -76,7 +95,7 @@ local function __TryGetObjectFromDouble(doubleHandle)
 	end
 	local handle = _DoubleToHandle(doubleHandle)
 	if _IsValidHandle(handle) then
-		return Ext.Entity.GetGameObject(handle)
+		return _GetGameObject(handle)
 	end
 	return nil
 end
@@ -92,7 +111,7 @@ end
 ---@return EclCharacter|EclItem
 local function _GetObjectFromHandle(handle)
 	if _IsValidHandle(handle) then
-		return Ext.Entity.GetGameObject(handle)
+		return _GetGameObject(handle)
 	end
 	return nil
 end
@@ -135,7 +154,7 @@ local function _GetClientCharacter()
 				character = _GetObjectFromHandle(ui:GetPlayerHandle())
 			end
 		end
-		if not character and Ext.Utils.GetGameMode() == "GameMaster" then
+		if not character and _GetGameMode() == "GameMaster" then
 			character = _GetGMTargetCharacter()
 		end
 	else
@@ -180,6 +199,12 @@ local function _GetCharacterSheetCharacter(this)
 	return character or _GetClientCharacter()
 end
 
+local _StatsIdTooltipTypes = {
+	Item = true,
+	Pyramid = true,
+	Rune = true,
+}
+
 ---@return TooltipRequest
 local function _CreateRequest()
 	local request = {
@@ -188,10 +213,20 @@ local function _CreateRequest()
 	--Support lifetime changes by getting the object on the fly
 	setmetatable(request, {
 		__index = function(tbl,k)
+			local tooltipType = rawget(tbl, "Type")
 			if k == "Character" or k == "Item" or k == "RuneItem" or k == "Object" then
 				local objectHandleDouble = rawget(tbl, "ObjectHandleDouble")
 				if objectHandleDouble then
 					return _GetObjectFromDouble(objectHandleDouble)
+				end
+			elseif "StatsId" and _StatsIdTooltipTypes[tooltipType] then
+				local objectHandleDouble = rawget(tbl, "ObjectHandleDouble")
+				if objectHandleDouble then
+					local obj = _GetObjectFromDouble(objectHandleDouble)
+					if obj then
+						rawset(tbl, "StatsId", obj.StatsId)
+						return obj.StatsId
+					end
 				end
 			elseif k == "Status" or k == "StatusId" then
 				local objectHandleDouble = rawget(tbl, "ObjectHandleDouble")
@@ -200,7 +235,7 @@ local function _CreateRequest()
 					local handle = _DoubleToHandle(objectHandleDouble)
 					local statusHandle = _DoubleToHandle(request.StatusHandleDouble)
 					if _IsValidHandle(handle) and _IsValidHandle(statusHandle) then
-						local status = Ext.Entity.GetStatus(handle, statusHandle)
+						local status = _GetStatus(handle, statusHandle)
 						if status then
 							if k == "StatusId" then
 								rawset(tbl, "StatusId", status.StatusId)
@@ -214,7 +249,7 @@ local function _CreateRequest()
 			elseif k == "Rune" then
 				local statsId = rawget(tbl, "StatsId")
 				if statsId ~= nil and statsId ~= "" then
-					return Ext.GetStat(statsId)
+					return _GetStat(statsId)
 				end
 			end
 		end
@@ -238,10 +273,14 @@ RequestProcessor.CallbackHandler[TooltipCalls.Status] = function(request, ui, ui
 	return request
 end
 
-RequestProcessor.CallbackHandler[TooltipCalls.Item] = function (request, ui, uiType, event, id, slot, extraArg)
+RequestProcessor.CallbackHandler[TooltipCalls.Item] = function (request, ui, uiType, event, ...)
+	local params = {...}
 	if uiType == _UITYPE.partyInventory_c then
 		local this = ui:GetRoot()
-		local ownerHandle = extraArg
+		local id = params[1]
+		local slot = params[2]
+		local handleDouble = params[3]
+		local ownerHandle = handleDouble
 		if ownerHandle == nil then
 			ownerHandle = this.ownerHandle
 		end
@@ -266,12 +305,32 @@ RequestProcessor.CallbackHandler[TooltipCalls.Item] = function (request, ui, uiT
 		if ownerHandle ~= nil and ownerHandle ~= 0 then
 			local inventoryHandle = _DoubleToHandle(ownerHandle)
 			if inventoryHandle ~= nil then
-				request.Inventory = Ext.GetGameObject(inventoryHandle)
+				request.Inventory = _GetGameObject(inventoryHandle)
 			end
 		end
+	elseif uiType == _UITYPE.uiCraft then
+		--Tooltip support for ingredient tooltips
+		local id,x,y,width,height,contextParam,side = table.unpack(params)
+		if id == 0 then
+			--mc.itemHandle is always 0 for ingredients in the recipe UI, which is the first param		
+			request.ObjectHandleDouble = nil
+			request.Type = "Generic"
+			request.X = x
+			request.Y = y
+			request.Width = width
+			request.Height = height
+			request.Side = side
+			request.AllowDelay = false
+		elseif id ~= nil then
+			--The Combine tab sends a proper handle
+			request.ObjectHandleDouble = id
+		else
+			_PrintWarning(string.format("[Game.Tooltip.RequestProcessor:%s] Item handle (%s) is nil? UI(%s)", event, id, uiType))
+		end
 	else
+		local id = params[1]
 		if id == nil then
-			Ext.Utils.PrintWarning(string.format("[Game.Tooltip.RequestProcessor] Item handle (%s) is nil? UI(%s) Event(%s)", id, uiType, event))
+			_PrintWarning(string.format("[Game.Tooltip.RequestProcessor:%s] Item handle (%s) is nil? UI(%s)", event, id, uiType))
 			return request
 		end
 		request.ObjectHandleDouble = id
@@ -299,14 +358,14 @@ end
 
 RequestProcessor.CallbackHandler[TooltipCalls.Ability] = function(request, ui, uiType, event, id)
 	if not request.Ability then
-		request.Ability = Ext.Stats.EnumIndexToLabel("AbilityType", id) or id
+		request.Ability = _EnumIndexToLabel("AbilityType", id) or id
 	end
 	return request
 end
 
 RequestProcessor.CallbackHandler[TooltipCalls.Talent] = function(request, ui, uiType, event, id, ...)
 	if not request.Talent then
-		request.Talent = Ext.Stats.EnumIndexToLabel("TalentType", id) or id
+		request.Talent = _EnumIndexToLabel("TalentType", id) or id
 	end
 	return request
 end
@@ -327,6 +386,11 @@ RequestProcessor.CallbackHandler[TooltipCalls.Tag] = function(request, ui, uiTyp
 		request.Tag = arg2
 		request.Category = id
 	end
+	return request
+end
+
+RequestProcessor.CallbackHandler[TooltipCalls.PlayerPortrait] = function(request, ui, uiType, event, id, x, y, width, height, side)
+	request.ObjectHandleDouble = id
 	return request
 end
 
@@ -496,11 +560,11 @@ end
 
 RequestProcessor.CallbackHandler[TooltipInvokes.Surface] = function(request, ui, uiType, event, x, y)
 	local surfaces = nil
-	local cursor = Ext.UI.GetPickingState()
+	local cursor = _GetPickingState()
 	if cursor and cursor.WalkablePosition then
 		request.Position = cursor.WalkablePosition
 		if _EXTVERSION >= 56 then
-			local grid = Ext.Entity.GetAiGrid()
+			local grid = _GetAiGrid()
 			if grid then
 				surfaces = _GetSurfaces(cursor.WalkablePosition[1], cursor.WalkablePosition[3], grid)
 			end
@@ -519,7 +583,7 @@ end
 local lastCursorObjectDoubleHandle = nil
 
 local function _CaptureCursorObject(ui, event)
-	local cursor = Ext.UI.GetPickingState()
+	local cursor = _GetPickingState()
 	if cursor then
 		if _IsValidHandle(cursor.HoverCharacter) then
 			lastCursorObjectDoubleHandle = _HandleToDouble(cursor.HoverCharacter)
@@ -564,11 +628,11 @@ function RequestProcessor.OnExamineTooltip(ui, method, typeIndex, id, ...)
 		request.Stat = Game.Tooltip.TooltipStatAttributes[id]
 
 		if request.Stat == nil then
-			Ext.Utils.PrintWarning("Requested tooltip for unknown stat ID " .. id)
+			_PrintWarning("Requested tooltip for unknown stat ID " .. id)
 		end
 	elseif typeIndex == 2 then
 		request.Type = "Ability"
-		request.Ability = Ext.Stats.EnumIndexToLabel("AbilityType", id) or id
+		request.Ability = _EnumIndexToLabel("AbilityType", id) or id
 	elseif typeIndex == 3 then
 		if id == 0 then
 			--Tooltip for "This character has no talents" doesn't exist.
@@ -577,15 +641,15 @@ function RequestProcessor.OnExamineTooltip(ui, method, typeIndex, id, ...)
 			return
 		else
 			request.Type = "Talent"
-			request.Talent = Ext.Stats.EnumIndexToLabel("TalentType", id) or id
+			request.Talent = _EnumIndexToLabel("TalentType", id) or id
 		end
 	elseif typeIndex == 7 then
 		request.Type = "Status"
 		if not _IsNaN(id) then
-			local statusHandle = Ext.DoubleToHandle(id)
+			local statusHandle = _DoubleToHandle(id)
 			if _IsValidHandle(statusHandle) then
 				request.StatusHandleDouble = id
-				local status = Ext.Entity.GetStatus(object.Handle, statusHandle)
+				local status = _GetStatus(object.Handle, statusHandle)
 				if status then
 					request.StatusId = status and status.StatusId or ""
 				end
@@ -611,7 +675,7 @@ function RequestProcessor.OnExamineTooltip(ui, method, typeIndex, id, ...)
 	end
 
 	if RequestProcessor.Tooltip.NextRequest ~= nil then
-		Ext.Utils.PrintWarning("[Game.Tooltip.RequestProcessor.OnExamineTooltip] Previous tooltip request not cleared in render callback?")
+		_PrintWarning("[Game.Tooltip.RequestProcessor.OnExamineTooltip] Previous tooltip request not cleared in render callback?")
 	end
 
 	RequestProcessor.Tooltip.NextRequest = request
@@ -625,6 +689,8 @@ end
 ---@param objectHandle number|nil
 function RequestProcessor.OnControllerExamineTooltip(ui, method, id, objectHandle)
 	local request = RequestProcessor.CreateRequest()
+	local uiTypeId = ui:GetTypeId()
+	request.UIType = uiTypeId
 
 	---@type EclItem|EclCharacter
 	local object = nil
@@ -663,7 +729,7 @@ function RequestProcessor.OnControllerExamineTooltip(ui, method, id, objectHandl
 			local statusHandle = _DoubleToHandle(id)
 			if _IsValidHandle(statusHandle) then
 				request.StatusHandleDouble = id
-				local status = Ext.Entity.GetStatus(object.Handle, statusHandle)
+				local status = _GetStatus(object.Handle, statusHandle)
 				if status then
 					request.StatusId = status and status.StatusId or ""
 				end
@@ -671,10 +737,10 @@ function RequestProcessor.OnControllerExamineTooltip(ui, method, id, objectHandl
 		end
 	elseif method == "selectAbility" then
 		request.Type = "Ability"
-		request.Ability = Ext.Stats.EnumIndexToLabel("AbilityType", id)
+		request.Ability = _EnumIndexToLabel("AbilityType", id)
 	elseif method == "selectTalent" then
 		request.Type = "Talent"
-		request.Talent = Ext.Stats.EnumIndexToLabel("TalentType", id)
+		request.Talent = _EnumIndexToLabel("TalentType", id)
 	elseif method == "selectStat" or method == "selectedAttribute" then
 		request.Type = "Stat"
 		request.Stat = id
@@ -682,7 +748,7 @@ function RequestProcessor.OnControllerExamineTooltip(ui, method, id, objectHandl
 		if stat ~= nil then
 			request.Stat = stat
 		else
-			Ext.Utils.PrintWarning(string.format("[RequestProcessor.OnControllerExamineTooltip] Requested tooltip for unknown stat ID (%s)", request.Stat))
+			_PrintWarning(string.format("[RequestProcessor.OnControllerExamineTooltip] Requested tooltip for unknown stat ID (%s)", request.Stat))
 		end
 	elseif method == "selectCustomStat" then
 		request.Type = "CustomStat"
@@ -695,7 +761,7 @@ function RequestProcessor.OnControllerExamineTooltip(ui, method, id, objectHandl
 
 	RequestProcessor.Tooltip.NextRequest = request
 	RequestProcessor.Tooltip.Last.Event = method
-	RequestProcessor.Tooltip.Last.UIType = ui:GetTypeId()
+	RequestProcessor.Tooltip.Last.UIType = uiTypeId
 end
 
 function RequestProcessor.OnGenericTooltip(ui, call, text, x, y, width, height, side, allowDelay)
@@ -771,7 +837,7 @@ function RequestProcessor.HandleCallback(requestType, ui, uiType, event, idOrDou
 		end
 	end
 
-	if not character and event == "showSkillTooltip" and Ext.Utils.GetGameMode() == "GameMaster" then
+	if not character and event == "showSkillTooltip" and _GetGameMode() == "GameMaster" then
 		character = _GetGMTargetCharacter()
 	end
 
@@ -798,7 +864,10 @@ function RequestProcessor.HandleCallback(requestType, ui, uiType, event, idOrDou
 
 	local request = _CreateRequest()
 	request.Type = requestType
-	request.ObjectHandleDouble = _HandleToDouble(character.Handle)
+	if character then
+		request.ObjectHandleDouble = _HandleToDouble(character.Handle)
+	end
+	request.UIType = uiType
 
 	RequestProcessor.Tooltip:InvokeRequestListeners(request, "before", ui, uiType, event, id, statOrWidth, ...)
 	if RequestProcessor.CallbackHandler[event] then
@@ -807,7 +876,7 @@ function RequestProcessor.HandleCallback(requestType, ui, uiType, event, idOrDou
 			RequestProcessor.Tooltip.NextRequest = r
 			request = RequestProcessor.Tooltip.NextRequest
 		else
-			Ext.Utils.PrintError(string.format("[Game.Tooltips.RequestProcessor] Error invoking tooltip handler for event (%s):\n%s", event, r))
+			_PrintError(string.format("[Game.Tooltips.RequestProcessor] Error invoking tooltip handler for event (%s):\n%s", event, r))
 		end
 	end
 	if RequestProcessor.ControllerEnabled then
@@ -962,7 +1031,7 @@ local function _GetTranslatedStringValue(ts)
 		refString = ts.ArgumentString.ReferenceString
 	end
 	if ts.Handle and ts.Handle.Handle ~= UNSET_HANDLE then
-		return Ext.L10N.GetTranslatedString(ts.Handle.Handle, ts.Handle.ReferenceString)
+		return _GetTranslatedString(ts.Handle.Handle, ts.Handle.ReferenceString)
 	end
 	return refString
 end
@@ -985,7 +1054,7 @@ local function _GetItemDisplayName(item)
 	end
 	if string.find(item.DisplayName, "|") or item.RootTemplate.DisplayName.Handle == nil or item.DisplayName == statsId then
 		if statsId then
-			local name = Ext.L10N.GetTranslatedStringFromKey(item.StatsId)
+			local name = _GetTranslatedStringFromKey(item.StatsId)
 			if name ~= nil and name ~= "" then
 				return name
 			end
@@ -1020,11 +1089,11 @@ local _SlotNames = {
 local function _GetItemSlotName(item)
 	if item.StatsId ~= "" and item.StatsId ~= nil and not _itemRarity[item.StatsId] then
 		---@type StatEntryWeapon
-		local stat = Ext.Stats.Get(item.StatsId)
+		local stat = _GetStat(item.StatsId)
 		if stat then
 			local tsData = _SlotNames[stat.Slot]
 			if tsData then
-				return Ext.L10N.GetTranslatedString(tsData[1], tsData[2])
+				return _GetTranslatedString(tsData[1], tsData[2])
 			end
 		end
 	end
@@ -1036,10 +1105,10 @@ local _equipmentPattern = "<font color=\"#ffffff\">%s</font><font size=\"15\"><b
 --[enemyHealthBar(42)][invoke] setText("<font color="#ffffff">Barrel</font>", "Level 1", false)
 --TODO Figure out if there's an equivalent for controllers.
 Ext.RegisterUITypeInvokeListener(_UITYPE.enemyHealthBar, "setText", function(ui, event, text, levelText, shortenWidth)
-	local cursor = Ext.UI.GetPickingState()
+	local cursor = _GetPickingState()
 	if cursor and _IsValidHandle(cursor.HoverItem) then
 		---@type EclItem
-		local item = Ext.Entity.GetItem(cursor.HoverItem)
+		local item = _GetItem(cursor.HoverItem)
 		if item and item.RootTemplate and item.RootTemplate.Tooltip > 0 then
 			local objectHandleDouble = _HandleToDouble(cursor.HoverItem)
 			local request = _CreateRequest()
@@ -1068,7 +1137,7 @@ local function _CreateWorldTooltipRequest(ui, event, text, x, y, isItem, item)
 		request = r
 		RequestProcessor.Tooltip.NextRequest = request
 	else
-		Ext.Utils.PrintError(string.format("[Game.Tooltip.RequestProcessor:_CreateWorldTooltipRequest] Error invoking tooltip handler for event (%s):\n%s", event, r))
+		_PrintError(string.format("[Game.Tooltip.RequestProcessor:_CreateWorldTooltipRequest] Error invoking tooltip handler for event (%s):\n%s", event, r))
 	end
 
 	RequestProcessor.Tooltip.Last.Event = event
@@ -1082,7 +1151,7 @@ local function _CreateWorldTooltipRequest(ui, event, text, x, y, isItem, item)
 		Label = text,
 		X = x,
 		Y = y,
-	}}, uiType)
+	}}, uiType, uiType)
 
 	RequestProcessor.Tooltip:NotifyListeners("World", nil, request, tooltipData, request.Item)
 
