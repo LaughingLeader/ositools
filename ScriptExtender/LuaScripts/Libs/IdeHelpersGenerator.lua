@@ -437,9 +437,13 @@ function Generator:EmitExt(role)
     self:EmitEmptyLine()
 end
 
-Ext.Types.GenerateIdeHelpers = function ()
+---@param outputPath string|nil
+Ext.Types.GenerateIdeHelpers = function (outputPath)
     local gen = Generator:New()
     gen:LoadNativeData()
     gen:Build()
+    if outputPath then
+        Ext.IO.SaveFile(outputPath, gen.Text)
+    end
     return gen.Text
 end
