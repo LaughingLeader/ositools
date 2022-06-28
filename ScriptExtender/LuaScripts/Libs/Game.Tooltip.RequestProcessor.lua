@@ -6,6 +6,9 @@ local _type = type
 local _IsValidHandle = Ext.Utils.IsValidHandle
 local _DoubleToHandle = Ext.UI.DoubleToHandle
 local _HandleToDouble = Ext.UI.HandleToDouble
+
+local _IsNaN = Ext.Math.IsNaN
+
 local _GetUIByType = Ext.UI.GetByType
 local _GetUIGetByPath = Ext.UI.GetByPath
 
@@ -73,19 +76,6 @@ local ControllerCharacterCreationCalls = {
 	Rune = "runeSlotOver",
 	Pyramid = "pyramidOver"
 }
-
----Returns true if a number is NaN, probably.
----@param x number
-local function _IsNaN(x)
-	if x == nil then
-		return true
-	end
-	if _type(x) == "number" then
-		local str = tostring(x)
-		return str == "nan" or str == tostring(0/0)
-	end
-	return true
-end
 
 ---@param doubleHandle integer
 ---@return EclCharacter|EclItem
@@ -1143,16 +1133,17 @@ local function _CreateWorldTooltipRequest(ui, event, text, x, y, isItem, item)
 	RequestProcessor.Tooltip.Last.Event = event
 	RequestProcessor.Tooltip.Last.UIType = uiType
 	RequestProcessor.Tooltip.Last.Request = request
-
+	
 	RequestProcessor.Tooltip:InvokeRequestListeners(request, "after", ui, uiType, event, text, x, y, isItem, item)
-
+	
 	local tooltipData = Game.Tooltip.TooltipData:Create({{
 		Type = "Description",
 		Label = text,
 		X = x,
 		Y = y,
 	}}, uiType, uiType)
-
+	
+	RequestProcessor.Tooltip.ActiveType = request.Type
 	RequestProcessor.Tooltip:NotifyListeners("World", nil, request, tooltipData, request.Item)
 
 	local desc = tooltipData:GetDescriptionElement()
@@ -1203,7 +1194,6 @@ Ext.RegisterUINameInvokeListener("removeTooltip", function(ui, ...)
 end)
 
 RequestProcessor.Utils = {
-	IsNaN = _IsNaN,
 	GetObjectFromDouble = _GetObjectFromDouble,
 	GetObjectFromHandle = _GetObjectFromHandle,
 	GetNetID = _GetNetID,
