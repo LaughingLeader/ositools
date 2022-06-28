@@ -78,8 +78,6 @@ function Game.Tooltip.AddCustomIconToTooltip(id, icon, w, h)
 	end
 end
 
----@alias TooltipElementType string|"ItemName"|"ItemWeight"|"ItemGoldValue"|"ItemLevel"|"ItemDescription"|"ItemRarity"|"ItemUseAPCost"|"ItemAttackAPCost"|"StatBoost"|"ResistanceBoost"|"AbilityBoost"|"OtherStatBoost"|"VitalityBoost"|"ChanceToHitBoost"|"DamageBoost"|"APCostBoost"|"APMaximumBoost"|"APStartBoost"|"APRecoveryBoost"|"CritChanceBoost"|"ArmorBoost"|"ConsumableDuration"|"ConsumablePermanentDuration"|"ConsumableEffect"|"ConsumableDamage"|"ExtraProperties"|"Flags"|"ItemRequirement"|"WeaponDamage"|"WeaponDamagePenalty"|"WeaponCritMultiplier"|"WeaponCritChance"|"WeaponRange"|"Durability"|"CanBackstab"|"AccuracyBoost"|"DodgeBoost"|"EquipmentUnlockedSkill"|"WandSkill"|"WandCharges"|"ArmorValue"|"ArmorSlotType"|"Blocking"|"NeedsIdentifyLevel"|"IsQuestItem"|"PriceToIdentify"|"PriceToRepair"|"PickpocketInfo"|"Engraving"|"ContainerIsLocked"|"SkillName"|"SkillIcon"|"SkillSchool"|"SkillTier"|"SkillRequiredEquipment"|"SkillAPCost"|"SkillCooldown"|"SkillDescription"|"SkillProperties"|"SkillDamage"|"SkillRange"|"SkillExplodeRadius"|"SkillCanPierce"|"SkillCanFork"|"SkillStrikeCount"|"SkillProjectileCount"|"SkillCleansesStatus"|"SkillMultiStrikeAttacks"|"SkillWallDistance"|"SkillPathSurface"|"SkillPathDistance"|"SkillHealAmount"|"SkillDuration"|"ConsumableEffectUknown"|"Reflection"|"SkillAlreadyLearned"|"SkillOnCooldown"|"SkillAlreadyUsed"|"AbilityTitle"|"AbilityDescription"|"TalentTitle"|"TalentDescription"|"SkillMPCost"|"MagicArmorValue"|"WarningText"|"RuneSlot"|"RuneEffect"|"Equipped"|"ShowSkillIcon"|"SkillbookSkill"|"Tags"|"EmptyRuneSlot"|"StatName"|"StatsDescription"|"StatsDescriptionBoost"|"StatSTRWeight"|"StatMEMSlot"|"StatsPointValue"|"StatsTalentsBoost"|"StatsTalentsMalus"|"StatsBaseValue"|"StatsPercentageBoost"|"StatsPercentageMalus"|"StatsPercentageTotal"|"StatsGearBoostNormal"|"StatsATKAPCost"|"StatsCriticalInfos"|"StatsAPTitle"|"StatsAPDesc"|"StatsAPBase"|"StatsAPBonus"|"StatsAPMalus"|"StatsTotalDamage"|"TagDescription"|"StatusImmunity"|"StatusBonus"|"StatusMalus"|"StatusDescription"|"Title"|"SurfaceDescription"|"Duration"|"Fire"|"Water"|"Earth"|"Air"|"Poison"|"Physical"|"Sulfur"|"Heal"|"Splitter"|"ArmorSet"
-
 TooltipItemIds = {
 	"ItemName","ItemWeight","ItemGoldValue","ItemLevel","ItemDescription","ItemRarity","ItemUseAPCost","ItemAttackAPCost","StatBoost",
 	"ResistanceBoost","AbilityBoost","OtherStatBoost","VitalityBoost","ChanceToHitBoost","DamageBoost","APCostBoost","APMaximumBoost",
@@ -234,10 +232,6 @@ TooltipItemTypes = {
 
 Game.Tooltip.TooltipItemTypes = TooltipItemTypes
 
--- for i,type in pairs(TooltipItemIds) do
--- 	TooltipItemTypes[type] = i
--- end
-
 local _Label = {"Label", "string"}
 local _Value = {"Value", "string"}
 local _NumValue = {"Value", "number"}
@@ -245,11 +239,6 @@ local _Icon = {"Icon", "string"}
 local _Warning = {"Warning", "string"}
 local _Unused = {nil, nil}
 local BoostSpec = {_Label, _NumValue, _Unused}
-
----@alias TooltipElement { Type:TooltipElementType }
----@alias BoostSpec { Type:string, Value:number }
----@alias ItemName { Type:string, Label:string }
-
 TooltipSpecs = {
 	ItemName = {_Label},
 	ItemWeight = {_Label, _Unused},
@@ -739,10 +728,8 @@ function DebugTooltipEncoding(ui)
 	_Print("Encoding matches: ", _Stringify(parsed2) == _Stringify(parsed))
 end
 
----@alias TooltipRequestType "Ability"|"CustomStat"|"DamageTypeToDeathType"|"Generic"|"Item"|"PlayerPortrait"|"Pyramid"|"Rune" |"Skill"|"Stat"|"Status"|"Surface"|"Talent"|"World"
-
 ---@class TooltipRequest:table
----@field Type GameTooltipType
+---@field Type TooltipRequestType
 ---@field UIType integer The UI type ID for the UI that initially called for a tooltip.
 ---@field TooltipUIType integer The UI type ID for the tooltip UI.
 ---@field ObjectHandleDouble number|nil
@@ -1160,7 +1147,7 @@ function TooltipHooks:OnRenderGenericTooltip(ui, method, text, x, y, allowDelay,
 
 		self.ActiveType = req.Type
 		self.Last.Type = req.Type
-		
+
 		if req.Type == "World" then
 			local item = req.Item
 			if item then
@@ -1221,7 +1208,10 @@ function TooltipHooks:GetCompareOwner(ui, item)
 	end
 
 	if handle ~= nil then
-		return _GetCharacter(handle)
+		local char = _GetCharacter(handle)
+		if char then
+			return char
+		end
 	end
 
 	local character = RequestProcessor.Utils.GetClientCharacter()
@@ -1590,9 +1580,11 @@ local function _ElementTypeMatch(e,t,isTable)
 	end
 end
 
----@param t TooltipElementType|TooltipElementType[] The tooltip element type, or an array of element types.
+---@overload fun(self:TooltipData, t:TooltipElementType, fallback:TooltipElement|nil)
+---@generic T:TooltipElement|TooltipElementType
+---@param t `T`|`T`[] The tooltip element type, or an array of element types.
 ---@param fallback TooltipElement|nil If an element of the desired type isn't found, append and return this fallback element.
----@return TooltipElement|nil elementOrFallback
+---@return T|nil elementOrFallback
 function TooltipData:GetElement(t, fallback)
 	local isTable = type(t) == "table"
 	for i=1,#self.Data do
@@ -1602,15 +1594,18 @@ function TooltipData:GetElement(t, fallback)
 		end
 	end
 	--If this element wasn't found, and fallback is set, append it.
-	if type(fallback) == "table" then
+	if _IsTooltipElement(fallback) then
 		self:AppendElement(fallback)
 		return fallback
 	end
 end
 
----@param t TooltipElementType|TooltipElementType[] The tooltip element type, or an array of element types.
+---Get the last element in the tooltip data of the given type.
+---@overload fun(self:TooltipData, t:TooltipElementType, fallback:TooltipElement|nil)
+---@generic T:TooltipElement|TooltipElementType
+---@param t `T`|`T`[] The tooltip element type, or an array of element types.
 ---@param fallback TooltipElement|nil If an element of the desired type isn't found, append and return this fallback element.
----@return TooltipElement|nil lastElementOrFallback
+---@return T|nil lastElementOrFallback
 function TooltipData:GetLastElement(t, fallback)
 	local isTable = type(t) == "table"
 	for i=#self.Data,1,-1 do
@@ -1625,8 +1620,10 @@ function TooltipData:GetLastElement(t, fallback)
 	end
 end
 
----@param t TooltipElementType|TooltipElementType[] The tooltip element type, or an array of element types.
----@return TooltipElementType[] elements An array of elements, or an empty table.
+---@overload fun(self:TooltipData, t:TooltipElementType)
+---@generic T:TooltipElement|TooltipElementType
+---@param t `T`|`T`[] The tooltip element type, or an array of element types.
+---@return T[] elements An array of elements, or an empty table.
 function TooltipData:GetElements(t)
 	local isTable = type(t) == "table"
 	local elements = {}
@@ -1780,8 +1777,6 @@ function TooltipData:AppendElementBeforeType(ele, elementType)
 	return ele
 end
 
----@alias GameTooltipType string|"Ability"|"CustomStat"|"Generic"|"Item"|"Pyramid"|"Rune"|"Skill"|"Stat"|"Status"|"Tag"|"Talent"|"World"
-
 Game.Tooltip.Register = {
 	---@param callback fun(request:AnyTooltipRequest, tooltip:TooltipData)
 	Global = function(callback)
@@ -1809,6 +1804,12 @@ Game.Tooltip.Register = {
 	---@param statsId string|nil Optional Rune StatsId to filter by.
 	Item = function(callback, statsId)
 		TooltipHooks:RegisterListener("Item", statsId, callback)
+	end,
+
+	---Called when a tooltip is created when hovering over a player portrait.
+	---@param callback fun(character:EclCharacter|nil, tooltip:TooltipData)
+	PlayerPortrait = function(callback)
+		TooltipHooks:RegisterListener("PlayerPortrait", nil, callback)
 	end,
 
 	---@param callback fun(item:EclItem, tooltip:TooltipData)
@@ -1842,6 +1843,13 @@ Game.Tooltip.Register = {
 		TooltipHooks:RegisterListener("Status", statusId, callback)
 	end,
 
+	---Register a callback for when cloud and ground surface tooltip text is shown.
+	---@param callback fun(character:EclCharacter, surface:string, tooltip:TooltipData)
+	---@param surfaceId SurfaceType|nil Optional Surface ID to filter by.
+	Surface = function(callback, surfaceId)
+		TooltipHooks:RegisterListener("Surface", surfaceId, callback)
+	end,
+
 	---@param callback fun(character:EclCharacter, tag:string, tooltip:TooltipData)
 	---@param tag string|nil Optional Tag ID to filter by.
 	Tag = function(callback, tag)
@@ -1860,12 +1868,6 @@ Game.Tooltip.Register = {
 	World = function(callback, statsId)
 		TooltipHooks:RegisterListener("World", statsId, callback)
 	end,
-
-	---Called when a tooltip is created when hovering over a player portrait.
-	---@param callback fun(character:EclCharacter|nil, tooltip:TooltipData)
-	PlayerPortrait = function(callback)
-		TooltipHooks:RegisterListener("PlayerPortrait", nil, callback)
-	end,
 }
 
 ---Register a function to call when a tooltip occurs.
@@ -1873,7 +1875,7 @@ Game.Tooltip.Register = {
 ---Game.Tooltip.RegisterListener("Skill", nil, myFunction) - Register a function for skill type tooltips.
 ---Game.Tooltip.RegisterListener("Status", "HASTED", myFunction) - Register a function for a HASTED status tooltip.
 ---Game.Tooltip.RegisterListener(myFunction) - Register a function for every kind of tooltip.
----@param tooltipTypeOrCallback GameTooltipType|function The tooltip type, such as "Skill".
+---@param tooltipTypeOrCallback TooltipRequestType|function The tooltip type, such as "Skill".
 ---@param idOrNil string|function The tooltip ID, such as "Projectile_Fireball".
 ---@param callbackOrNil function If the first two parameters are set, this is the function to invoke.
 function Game.Tooltip.RegisterListener(tooltipTypeOrCallback, idOrNil, callbackOrNil)
@@ -1893,8 +1895,6 @@ function Game.Tooltip.RegisterListener(tooltipTypeOrCallback, idOrNil, callbackO
 		_PrintError(string.format("[Game.Tooltip.RegisterListener] Invalid arguments - 1: [%s](%s), 2: [%s](%s), 3: [%s](%s)", tooltipTypeOrCallback, t1, idOrNil, t2, callbackOrNil, t3))
 	end
 end
-
----@alias AnyTooltipRequest TooltipItemRequest|TooltipRuneRequest|TooltipSkillRequest|TooltipStatusRequest|TooltipAbilityRequest|TooltipTalentRequest|TooltipStatRequest|TooltipSurfaceRequest|TooltipPyramidRequest|TooltipTagRequest|TooltipCustomStatRequest|TooltipGenericRequest|TooltipWorldRequest
 
 ---@alias GameTooltipRequestListener fun(request:AnyTooltipRequest, ui:UIObject, uiType:integer, event:string, id:string|number|boolean|nil, ...:string|number|boolean|nil)
 
@@ -2012,3 +2012,229 @@ Ext.Events.UIObjectCreated:Subscribe(function (e)
 		end, {Once=true})
 	end
 end, _highPriority)
+
+--#region Annotations
+
+---@alias TooltipElementType string|"AbilityBoost"|"AbilityDescription"|"AbilityTitle"|"AccuracyBoost"|"APCostBoost"|"APMaximumBoost"|"APRecoveryBoost"|"APStartBoost"|"ArmorBoost"|"ArmorSet"|"ArmorSlotType"|"ArmorValue"|"Blocking"|"CanBackstab"|"ChanceToHitBoost"|"ConsumableDamage"|"ConsumableDuration"|"ConsumableEffect"|"ConsumableEffectUknown"|"ConsumablePermanentDuration"|"ContainerIsLocked"|"CritChanceBoost"|"DamageBoost"|"DodgeBoost"|"Durability"|"EmptyRuneSlot"|"Engraving"|"EquipmentUnlockedSkill"|"Equipped"|"ExtraProperties"|"Flags"|"IsQuestItem"|"ItemAttackAPCost"|"ItemDescription"|"ItemGoldValue"|"ItemLevel"|"ItemName"|"ItemRarity"|"ItemRequirement"|"ItemUseAPCost"|"ItemWeight"|"MagicArmorValue"|"NeedsIdentifyLevel"|"OtherStatBoost"|"PickpocketInfo"|"PriceToIdentify"|"PriceToRepair"|"Reflection"|"ResistanceBoost"|"RuneEffect"|"RuneSlot"|"ShowSkillIcon"|"SkillAlreadyLearned"|"SkillAlreadyUsed"|"SkillAPCost"|"SkillbookSkill"|"SkillCanFork"|"SkillCanPierce"|"SkillCleansesStatus"|"SkillCooldown"|"SkillDamage"|"SkillDescription"|"SkillDuration"|"SkillExplodeRadius"|"SkillHealAmount"|"SkillIcon"|"SkillMPCost"|"SkillMultiStrikeAttacks"|"SkillName"|"SkillOnCooldown"|"SkillPathDistance"|"SkillPathSurface"|"SkillProjectileCount"|"SkillProperties"|"SkillRange"|"SkillRequiredEquipment"|"SkillSchool"|"SkillStrikeCount"|"SkillTier"|"SkillWallDistance"|"StatBoost"|"StatMEMSlot"|"StatName"|"StatsAPBase"|"StatsAPBonus"|"StatsAPDesc"|"StatsAPMalus"|"StatsAPTitle"|"StatsATKAPCost"|"StatsBaseValue"|"StatsCriticalInfos"|"StatsDescription"|"StatsDescriptionBoost"|"StatsGearBoostNormal"|"StatsPercentageBoost"|"StatsPercentageMalus"|"StatsPercentageTotal"|"StatsPointValue"|"StatsTalentsBoost"|"StatsTalentsMalus"|"StatsTotalDamage"|"StatSTRWeight"|"StatusBonus"|"StatusDescription"|"StatusImmunity"|"StatusMalus"|"TagDescription"|"Tags"|"TalentDescription"|"TalentTitle"|"VitalityBoost"|"WandCharges"|"WandSkill"|"WarningText"|"WeaponCritChance"|"WeaponCritMultiplier"|"WeaponDamage"|"WeaponDamagePenalty"|"WeaponRange"|
+---@alias TooltipRequestType "Ability"|"CustomStat"|"Generic"|"Item"|"PlayerPortrait"|"Pyramid"|"Rune"|"Skill"|"Stat"|"Status"|"Surface"|"Tag"|"Talent"|"World"
+---@alias AnyTooltipRequest TooltipItemRequest|TooltipRuneRequest|TooltipSkillRequest|TooltipStatusRequest|TooltipAbilityRequest|TooltipTalentRequest|TooltipStatRequest|TooltipSurfaceRequest|TooltipPyramidRequest|TooltipTagRequest|TooltipCustomStatRequest|TooltipGenericRequest|TooltipWorldRequest
+
+---@class TooltipElement
+---@field Type TooltipElementType
+
+---@class TooltipLabelElement
+---@field Label string
+
+---@class TooltipLabelDamageElement
+---@field Label string
+---@field DamageType integer
+---@field MinDamage integer
+---@field MaxDamage integer
+
+---@class TooltipLabelNumValueElement
+---@field Label string
+---@field Value number
+
+---@class TooltipLabelStringValueElement
+---@field Label string
+---@field Value string
+
+---@class BoostSpec:TooltipElement
+---@field Type string
+---@field Value number
+
+---@class ItemName:TooltipLabelElement
+---@class ItemWeight:TooltipLabelElement
+---@class ItemGoldValue:TooltipLabelElement
+---@class ItemLevel:TooltipLabelNumValueElement
+---@class ItemDescription:TooltipLabelElement
+---@class ItemRarity:TooltipLabelElement
+
+---@class ItemUseAPCost:TooltipLabelNumValueElement
+---@field RequirementMet boolean
+
+---@class ItemAttackAPCost:TooltipLabelNumValueElement
+---@field Warning string
+---@field RequirementMet boolean
+
+---@class StatBoost:BoostSpec
+---@class ResistanceBoost:BoostSpec
+---@class AbilityBoost:BoostSpec
+---@class OtherStatBoost:TooltipLabelStringValueElement
+---@class VitalityBoost:BoostSpec
+---@class ChanceToHitBoost:BoostSpec
+---@class DamageBoost:BoostSpec
+---@class APCostBoost:BoostSpec
+---@class APMaximumBoost:BoostSpec
+---@class APStartBoost:BoostSpec
+---@class APRecoveryBoost:BoostSpec
+---@class CritChanceBoost:BoostSpec
+---@class ArmorBoost:BoostSpec
+---@class ConsumableDuration:TooltipLabelStringValueElement
+---@class ConsumablePermanentDuration:TooltipLabelStringValueElement
+---@class ConsumableEffect:TooltipLabelStringValueElement
+
+---@class ConsumableDamage:TooltipLabelDamageElement
+
+---@class ExtraProperties:TooltipLabelElement
+---@class Flags:TooltipLabelElement
+
+---@class ItemRequirement:TooltipLabelElement
+---@field RequirementMet boolean
+
+---@class WeaponDamage:TooltipLabelDamageElement
+
+---@class WeaponDamagePenalty:TooltipLabelElement
+---@class WeaponCritMultiplier:TooltipLabelStringValueElement
+---@class WeaponCritChance:TooltipLabelStringValueElement
+---@class WeaponRange:TooltipLabelStringValueElement
+
+---@class Durability:TooltipLabelNumValueElement
+---@field Max number
+
+---@class CanBackstab:TooltipLabelElement
+---@class AccuracyBoost:TooltipLabelNumValueElement
+---@class DodgeBoost:TooltipLabelNumValueElement
+
+---@class EquipmentUnlockedSkill:TooltipLabelStringValueElement
+---@field Icon number
+
+---@class WandSkill:TooltipLabelStringValueElement
+---@field Icon string
+---@field Warning string
+
+---@class WandCharges:TooltipLabelNumValueElement
+---@field MaxValue number
+
+---@class ArmorValue:TooltipLabelNumValueElement
+---@class ArmorSlotType:TooltipLabelElement
+---@class Blocking:TooltipLabelNumValueElement
+---@class NeedsIdentifyLevel:TooltipLabelElement
+---@class IsQuestItem:TooltipElement
+---@class PriceToIdentify:TooltipLabelStringValueElement
+---@class PriceToRepair:TooltipLabelStringValueElement
+---@class PickpocketInfo:TooltipLabelElement
+---@class Engraving:TooltipLabelElement
+---@class ContainerIsLocked:TooltipLabelElement
+
+---@class Tags:TooltipLabelStringValueElement
+---@field Warning string
+
+---@class SkillName:TooltipLabelElement
+---@class SkillIcon:TooltipLabelElement
+
+---@class SkillSchool:TooltipLabelElement
+---@field Icon number
+
+---@class SkillTier:TooltipLabelElement
+
+---@class SkillRequiredEquipment:TooltipLabelElement
+---@field RequirementMet boolean
+
+---@class SkillAPCost:TooltipLabelNumValueElement
+---@field Warning string
+---@field RequirementMet boolean
+
+---@class SkillCooldown:TooltipLabelNumValueElement
+---@field Warning string
+---@field ValueText string
+
+---@class SkillDescription:TooltipLabelElement
+---@class SkillDamage:TooltipLabelDamageElement
+---@class SkillRange:TooltipLabelStringValueElement
+---@class SkillExplodeRadius:TooltipLabelStringValueElement
+---@class SkillCanPierce:TooltipLabelStringValueElement
+---@class SkillCanFork:TooltipLabelStringValueElement
+---@class SkillStrikeCount:TooltipLabelStringValueElement
+---@class SkillProjectileCount:TooltipLabelStringValueElement
+---@class SkillCleansesStatus:TooltipLabelStringValueElement
+---@class SkillMultiStrikeAttacks:TooltipLabelStringValueElement
+---@class SkillWallDistance:TooltipLabelStringValueElement
+---@class SkillPathSurface:TooltipLabelStringValueElement
+---@class SkillPathDistance:TooltipLabelStringValueElement
+---@class SkillHealAmount:TooltipLabelStringValueElement
+
+---@class SkillDuration:TooltipLabelNumValueElement
+---@field Warning string
+
+---@class ConsumableEffectUknown:TooltipLabelElement
+---@class Reflection:TooltipLabelElement
+---@class SkillAlreadyLearned:TooltipLabelElement
+---@class SkillOnCooldown:TooltipLabelElement
+---@class SkillAlreadyUsed:TooltipLabelElement
+---@class AbilityTitle:TooltipLabelElement
+
+---@class AbilityDescription:TooltipElement
+---@field AbilityId number
+---@field Description string
+---@field Description2 string
+---@field CurrentLevelEffect string
+---@field NextLevelEffect string
+
+---@class TalentTitle:TooltipLabelElement
+
+---@class TalentDescription:TooltipElement
+---@field TalentId number
+---@field Description string
+---@field Requirement string
+---@field IncompatibleWith string
+---@field Selectable boolean
+---@field Unknown boolean
+
+---@class SkillMPCost:TooltipLabelNumValueElement
+---@field RequirementMet boolean
+
+---@class MagicArmorValue:TooltipLabelNumValueElement
+---@field RequirementMet boolean
+
+---@class WarningText:TooltipLabelElement
+---@class RuneSlot:TooltipLabelStringValueElement
+
+---@class RuneEffect:TooltipElement
+---@field Unknown1 number
+---@field Rune1 string
+---@field Rune2 string
+---@field Rune3 string
+---@field Label string
+---@field Label2 string
+
+---@class Equipped:TooltipLabelElement
+---@field EquippedBy string
+---@field Slot string
+
+---@class ShowSkillIcon:TooltipElement
+---@class SkillbookSkill:TooltipLabelStringValueElement
+---@field Icon number
+
+---@class EmptyRuneSlot:TooltipLabelStringValueElement
+---@class StatName:TooltipLabelElement
+---@class StatsDescription:TooltipLabelElement
+---@class StatsDescriptionBoost:TooltipLabelNumValueElement
+---@class StatSTRWeight:TooltipLabelElement
+---@class StatMEMSlot:TooltipLabelElement
+---@class StatsPointValue:TooltipLabelElement
+---@class StatsTalentsBoost:TooltipLabelElement
+---@class StatsTalentsMalus:TooltipLabelElement
+---@class StatsBaseValue:TooltipLabelElement
+---@class StatsPercentageBoost:TooltipLabelElement
+---@class StatsPercentageMalus:TooltipLabelElement
+---@class StatsPercentageTotal:TooltipLabelNumValueElement
+---@class StatsGearBoostNormal:TooltipLabelElement
+---@class StatsATKAPCost:TooltipLabelElement
+---@class StatsCriticalInfos:TooltipLabelElement
+---@class StatsAPTitle:TooltipLabelElement
+---@class StatsAPDesc:TooltipLabelElement
+---@class StatsAPBase:TooltipLabelElement
+---@class StatsAPBonus:TooltipLabelElement
+---@class StatsAPMalus:TooltipLabelElement
+---@class StatsTotalDamage:TooltipLabelElement
+
+---@class TagDescription:TooltipLabelElement
+---@field Image number
+
+---@class StatusImmunity:TooltipLabelElement
+---@class StatusBonus:TooltipLabelElement
+---@class StatusMalus:TooltipLabelElement
+---@class StatusDescription:TooltipLabelElement
+
+--#endregion
