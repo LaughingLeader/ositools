@@ -1426,7 +1426,7 @@ function TooltipHooks:NotifyListeners(requestType, name, request, tooltip, ...)
 		self:NotifyAll(self.ObjectListeners[requestType][name], table.unpack(args))
 	end
 
-	self:NotifyAll(self.GlobalListeners, request, tooltip)
+	self:NotifyAll(self.GlobalListeners, request, tooltip, ...)
 end
 
 function TooltipHooks:NotifyAll(listeners, ...)
