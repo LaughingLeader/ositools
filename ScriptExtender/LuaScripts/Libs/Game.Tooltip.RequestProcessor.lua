@@ -1,5 +1,5 @@
-local _EXTVERSION = Ext.Version()
-local _DEBUG = Ext.IsDeveloperMode()
+local _EXTVERSION = Ext.Utils.Version()
+local _DEBUG = Ext.Debug.IsDeveloperMode()
 
 local _type = type
 
@@ -7,7 +7,9 @@ local _IsValidHandle = Ext.Utils.IsValidHandle
 local _DoubleToHandle = Ext.UI.DoubleToHandle
 local _HandleToDouble = Ext.UI.HandleToDouble
 
-local _IsNaN = Ext.Math.IsNaN
+--TODO Ext.Math.IsNaN returns a float
+local _mn = Ext.Math.IsNaN
+local _IsNaN = function(x) return _mn(x) ~= 0 end
 
 local _GetUIByType = Ext.UI.GetByType
 local _GetUIGetByPath = Ext.UI.GetByPath
@@ -256,8 +258,8 @@ end
 
 RequestProcessor.CallbackHandler[TooltipCalls.Status] = function(request, ui, uiType, event, id)
 	request.StatusHandleDouble = id
-	local status = Ext.GetStatus(request.Character.Handle, _DoubleToHandle(id))
-	if status then
+	local b,status = pcall(_GetStatus, _DoubleToHandle(request.ObjectHandleDouble), _DoubleToHandle(id))
+	if b and status then
 		request.StatusId = status and status.StatusId or ""
 	end
 	return request
