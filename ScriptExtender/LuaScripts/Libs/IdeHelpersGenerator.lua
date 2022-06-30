@@ -27,7 +27,7 @@ function Generator:New()
     o.Modules = {}
     o.NativeClasses = {}
     o.NativeModules = {}
-    o.Text = ""
+    o.Text = "--- @diagnostic disable\n"
     self.__index = self
     return o
 end
@@ -112,7 +112,7 @@ function Generator:Build()
 
     self:EmitExt("Client")
     self:EmitExt("Server")
-    self:EmitExt(nil)
+    self:EmitExt(nil, true)
 end
 
 function Generator:MakeTypeName(type)
@@ -210,7 +210,7 @@ end
 function Generator:EmitEnumeration(type)
     local decl = "string"
     for key,value in pairs(type.EnumValues) do
-        decl = decl .. " | \"'" .. key .. "'\""
+        decl = string.format("%s|\"%s\"", decl, key)
     end
     self:EmitAlias(type.TypeName, decl)
 end
@@ -423,7 +423,7 @@ function Generator:EmitModule(type)
     end
 end
 
-function Generator:EmitExt(role)
+function Generator:EmitExt(role, declareGlobal)
     self:EmitComment("@class Ext" .. (role or ""))
 
     local aliases = {}
@@ -452,7 +452,9 @@ function Generator:EmitExt(role)
         end
     end
 
-    self:EmitLine("Ext = {}")
+    if declareGlobal then
+        self:EmitLine("Ext = {}")
+    end
     self:EmitEmptyLine()
     self:EmitEmptyLine()
 end
