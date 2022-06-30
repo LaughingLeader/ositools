@@ -7,9 +7,7 @@ local _IsValidHandle = Ext.Utils.IsValidHandle
 local _DoubleToHandle = Ext.UI.DoubleToHandle
 local _HandleToDouble = Ext.UI.HandleToDouble
 
---TODO Ext.Math.IsNaN returns a float
-local _mn = Ext.Math.IsNaN
-local _IsNaN = function(x) return _mn(x) ~= 0 end
+local _IsNaN = Ext.Math.IsNaN
 
 local _GetUIByType = Ext.UI.GetByType
 local _GetUIGetByPath = Ext.UI.GetByPath
@@ -21,6 +19,7 @@ local _GetTranslatedStringFromKey = Ext.L10N.GetTranslatedStringFromKey
 local _GetAiGrid = Ext.Entity.GetAiGrid
 local _GetStatus = Ext.Entity.GetStatus
 local _GetGameObject = Ext.Entity.GetGameObject
+local _GetCharacter = Ext.Entity.GetCharacter
 local _GetItem = Ext.Entity.GetItem
 local _GetPickingState = Ext.UI.GetPickingState
 
@@ -80,30 +79,46 @@ local ControllerCharacterCreationCalls = {
 }
 
 ---@param doubleHandle integer
----@return EclCharacter|EclItem
-local function __TryGetObjectFromDouble(doubleHandle)
+---@param getObjectFunc function|nil
+---@return EclCharacter|EclItem|nil
+local function __TryGetObjectFromDouble(doubleHandle, getObjectFunc)
 	if _IsNaN(doubleHandle) then
 		return nil
 	end
 	local handle = _DoubleToHandle(doubleHandle)
 	if _IsValidHandle(handle) then
-		return _GetGameObject(handle)
+		getObjectFunc = getObjectFunc or _GetGameObject
+		return getObjectFunc(handle)
 	end
 	return nil
 end
 
 ---@param doubleHandle integer
+---@param getObjectFunc function|nil
 ---@return EclCharacter|EclItem
-local function _GetObjectFromDouble(doubleHandle)
-	local b,result = pcall(__TryGetObjectFromDouble, doubleHandle)
-	return result
+local function _GetObjectFromDouble(doubleHandle, getObjectFunc)
+	local b,result = pcall(__TryGetObjectFromDouble, doubleHandle, getObjectFunc)
+	if b then
+		return result
+	end
+	return nil
 end
 
 ---@param handle ComponentHandle
----@return EclCharacter|EclItem
-local function _GetObjectFromHandle(handle)
+---@param getObjectFunc function|nil
+---@return EclCharacter|EclItem|nil
+local function _GetObjectFromHandle(handle, getObjectFunc)
 	if _IsValidHandle(handle) then
-		return _GetGameObject(handle)
+		if not getObjectFunc then
+			getObjectFunc = _GetGameObject
+		end
+		local b,result = pcall(getObjectFunc, handle)
+		if b then
+			return result
+		elseif _DEBUG then
+			Ext.PrintError(result)
+			Ext.PrintError("_GetObjectFromHandle", handle)
+		end
 	end
 	return nil
 end
@@ -122,7 +137,7 @@ local function _GetGMTargetCharacter()
 	if ui then
 		local this = ui:GetRoot()
 		if this then
-			return _GetObjectFromDouble(ui.targetHandle)
+			return _GetObjectFromDouble(ui.targetHandle, _GetCharacter)
 		end
 	end
 	return nil
@@ -137,13 +152,13 @@ local function _GetClientCharacter()
 		if ui ~= nil then
 			local this = ui:GetRoot()
 			if this ~= nil then
-				character = _GetObjectFromDouble(this.hotbar_mc.characterHandle)
+				character = _GetObjectFromDouble(this.hotbar_mc.characterHandle, _GetCharacter)
 			end
 		end
 		if not character then
 			local ui = _GetUIByType(_UITYPE.statusConsole)
 			if ui then
-				character = _GetObjectFromHandle(ui:GetPlayerHandle())
+				character = _GetObjectFromHandle(ui:GetPlayerHandle(), _GetCharacter)
 			end
 		end
 		if not character and _GetGameMode() == "GameMaster" then
@@ -154,13 +169,13 @@ local function _GetClientCharacter()
 		if ui ~= nil then
 			local this = ui:GetRoot()
 			if this ~= nil then
-				character = _GetObjectFromDouble(this.characterHandle)
+				character = _GetObjectFromDouble(this.characterHandle, _GetCharacter)
 			end
 		end
 		if not character then
 			local ui = _GetUIByType(_UITYPE.statusConsole)
 			if ui ~= nil then
-				character = _GetObjectFromHandle(ui:GetPlayerHandle())
+				character = _GetObjectFromHandle(ui:GetPlayerHandle(), _GetCharacter)
 			end
 		end
 	end
@@ -186,7 +201,7 @@ local function _GetCharacterSheetCharacter(this)
 		end
 	end
 	if this ~= nil then
-		character = _GetObjectFromDouble(this.characterHandle)
+		character = _GetObjectFromDouble(this.characterHandle, _GetCharacter)
 	end
 	return character or _GetClientCharacter()
 end
@@ -195,6 +210,13 @@ local _StatsIdTooltipTypes = {
 	Item = true,
 	Pyramid = true,
 	Rune = true,
+}
+
+local _ObjectParamNames = {
+	Character = true,
+	Item = true,
+	RuneItem = true,
+	Object = true,
 }
 
 ---@return TooltipRequest
@@ -206,42 +228,50 @@ local function _CreateRequest()
 	setmetatable(request, {
 		__index = function(tbl,k)
 			local tooltipType = rawget(tbl, "Type")
-			if k == "Character" or k == "Item" or k == "RuneItem" or k == "Object" then
+			if _ObjectParamNames[k] then
 				local objectHandleDouble = rawget(tbl, "ObjectHandleDouble")
 				if objectHandleDouble then
-					return _GetObjectFromDouble(objectHandleDouble)
-				end
-			elseif "StatsId" and _StatsIdTooltipTypes[tooltipType] then
-				local objectHandleDouble = rawget(tbl, "ObjectHandleDouble")
-				if objectHandleDouble then
-					local obj = _GetObjectFromDouble(objectHandleDouble)
-					if obj then
-						rawset(tbl, "StatsId", obj.StatsId)
-						return obj.StatsId
+					if k == "Character" then
+						return _GetObjectFromDouble(objectHandleDouble, _GetCharacter)
+					elseif k == "Item" or k == "RuneItem" then
+						return _GetObjectFromDouble(objectHandleDouble, _GetItem)
+					elseif "Object" then
+						return _GetObjectFromDouble(objectHandleDouble)
 					end
 				end
-			elseif k == "Status" or k == "StatusId" then
-				local objectHandleDouble = rawget(tbl, "ObjectHandleDouble")
-				local statusHandleDouble = rawget(tbl, "StatusHandleDouble")
-				if statusHandleDouble and objectHandleDouble then
-					local handle = _DoubleToHandle(objectHandleDouble)
-					local statusHandle = _DoubleToHandle(request.StatusHandleDouble)
-					if _IsValidHandle(handle) and _IsValidHandle(statusHandle) then
-						local status = _GetStatus(handle, statusHandle)
-						if status then
-							if k == "StatusId" then
-								rawset(tbl, "StatusId", status.StatusId)
-								return status.StatusId
-							else
-								return status
+			else
+				if k == "StatsId" and _StatsIdTooltipTypes[tooltipType] then
+					local objectHandleDouble = rawget(tbl, "ObjectHandleDouble")
+					if objectHandleDouble then
+						local obj = _GetObjectFromDouble(objectHandleDouble)
+						if obj then
+							rawset(tbl, "StatsId", obj.StatsId)
+							return obj.StatsId
+						end
+					end
+				elseif k == "Status" or k == "StatusId" then
+					local objectHandleDouble = rawget(tbl, "ObjectHandleDouble")
+					local statusHandleDouble = rawget(tbl, "StatusHandleDouble")
+					if statusHandleDouble and objectHandleDouble then
+						local handle = _DoubleToHandle(objectHandleDouble)
+						local statusHandle = _DoubleToHandle(request.StatusHandleDouble)
+						if _IsValidHandle(handle) and _IsValidHandle(statusHandle) then
+							local status = _GetStatus(handle, statusHandle)
+							if status then
+								if k == "StatusId" then
+									rawset(tbl, "StatusId", status.StatusId)
+									return status.StatusId
+								else
+									return status
+								end
 							end
 						end
 					end
-				end
-			elseif k == "Rune" then
-				local statsId = rawget(tbl, "StatsId")
-				if statsId ~= nil and statsId ~= "" then
-					return _GetStat(statsId)
+				elseif k == "Rune" then
+					local statsId = rawget(tbl, "StatsId")
+					if statsId ~= nil and statsId ~= "" then
+						return _GetStat(statsId)
+					end
 				end
 			end
 		end
