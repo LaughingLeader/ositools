@@ -357,9 +357,8 @@ RequestProcessor.CallbackHandler[TooltipCalls.Item] = function (request, ui, uiT
 			_PrintWarning(string.format("[Game.Tooltip.RequestProcessor:%s] Item handle (%s) is nil? UI(%s)", event, id, uiType))
 		end
 	elseif uiType == _UITYPE.containerInventory.Default or uiType == _UITYPE.containerInventory.Pickpocket then
-		--Tooltip support for ingredient tooltips
-		local doubleHandle,slot = table.unpack(params)
-		if doubleHandle ~= 0 then
+		local doubleHandle = params[1]
+		if not _IsNaN(doubleHandle) and doubleHandle > 0 then
 			request.ObjectHandleDouble = doubleHandle
 		end
 	else
