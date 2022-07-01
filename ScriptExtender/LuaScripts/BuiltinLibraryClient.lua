@@ -309,7 +309,7 @@ Ext.UI.TypeID = {
 	combatTurn = 8,
 	connectionMenu = 33,
 	connectivity_c = 34,
-	containerInventory = 37,
+	containerInventory = { Default = 9, Pickpocket = 37},
 	containerInventoryGM = 143,
 	contextMenu = { Default = 10, Object = 11 },
 	contextMenu_c = { Default = 12, Object = 96 },
@@ -421,6 +421,7 @@ Ext.UI.TypeID = {
 local _MultiTypeUI = {
 	contextMenu = true,
 	contextMenu_c = true,
+	containerInventory = true,
 	optionsSettings = true,
 	optionsSettings_c = true,
 }

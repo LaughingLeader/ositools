@@ -895,6 +895,9 @@ local TooltipArrayNames = {
 		CharacterCreation = {
 			Main = "tooltipArray",
 		},
+		ContainerInventory = {
+			Main = "tooltip_array",
+		},
 		PartyInventory = {
 			Main = "tooltip_array",
 			CompareMain = "compareTooltip_array",
@@ -938,6 +941,14 @@ function TooltipHooks:RegisterControllerHooks()
 
 	_RegisterUITypeInvokeListener(_UITYPE.craftPanel_c, "updateTooltip", function (ui, ...)
 		self:OnRenderTooltip(TooltipArrayNames.Console.CraftPanel, ui, ...)
+	end)
+
+	_RegisterUITypeInvokeListener(_UITYPE.containerInventory.Default, "updateTooltip", function (ui, ...)
+		self:OnRenderTooltip(TooltipArrayNames.Console.ContainerInventory, ui, ...)
+	end)
+
+	_RegisterUITypeInvokeListener(_UITYPE.containerInventory.Pickpocket, "updateTooltip", function (ui, ...)
+		self:OnRenderTooltip(TooltipArrayNames.Console.ContainerInventory, ui, ...)
 	end)
 
 	_RegisterUITypeInvokeListener(_UITYPE.statsPanel_c, "showTooltip", function (ui, ...)
