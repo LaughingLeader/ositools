@@ -1589,6 +1589,7 @@ local function _ElementTypeMatch(e,t,isTable)
 	elseif e == t then
 		return true
 	end
+	return false
 end
 
 ---@overload fun(self:TooltipData, t:TooltipElementType, fallback:TooltipElement|nil)
@@ -1653,11 +1654,20 @@ end
 function TooltipData:RemoveElements(t)
 	local isTable = type(t) == "table"
 	local success = false
-	for i=1,#self.Data do
-		local element = self.Data[i]
-		if element and _ElementTypeMatch(element.Type, t, isTable) then
-			table.remove(self.Data, i)
-			success = true
+	local j = 1
+	local n = #self.Data
+	--Alternative table.remove optimization
+	--https://stackoverflow.com/a/53038524/2290477
+	for i=1,n do
+		if not _ElementTypeMatch(self.Data[i].Type, t, isTable) then
+			-- Move i's kept value to j's position, if it's not already there.
+			if (i ~= j) then
+				self.Data[j] = self.Data[i]
+				self.Data[i] = nil
+			end
+			j = j + 1 -- Increment position of where we'll place the next kept value.
+		else
+			self.Data[i] = nil
 		end
 	end
 	return success
@@ -2018,7 +2028,7 @@ Ext.Events.UIObjectCreated:Subscribe(function (e)
 		ui:CaptureInvokes()
 	elseif Ext.GetGameState() == "Running" then
 		--Defer by a tick
-		Ext.Events.Tick:Subscribe(function (e)
+		Ext.Events.Tick:Subscribe(function (_e)
 			CaptureBuiltInUIs()
 		end, {Once=true})
 	end
