@@ -1660,12 +1660,11 @@ function TooltipData:RemoveElements(t)
 	--https://stackoverflow.com/a/53038524/2290477
 	for i=1,n do
 		if not _ElementTypeMatch(self.Data[i].Type, t, isTable) then
-			-- Move i's kept value to j's position, if it's not already there.
 			if (i ~= j) then
 				self.Data[j] = self.Data[i]
 				self.Data[i] = nil
 			end
-			j = j + 1 -- Increment position of where we'll place the next kept value.
+			j = j + 1
 		else
 			self.Data[i] = nil
 		end

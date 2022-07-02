@@ -7,6 +7,8 @@ local _CustomEntries = Ext.Utils.Include(nil, "builtin://Libs/HelpersGenerator/C
 local _CustomTypeEntries = Ext.Utils.Include(nil, "builtin://Libs/HelpersGenerator/CustomTypeEntries.lua")
 ---@type table<string,{Before:string|nil, After:string|nil}>
 local _CustomFunctionExtras = Ext.Utils.Include(nil, "builtin://Libs/HelpersGenerator/CustomFunctionExtras.lua")
+---@type string
+local _OsiLines = Ext.Utils.Include(nil, "builtin://Libs/HelpersGenerator/Osi.lua")
 
 local Generator = {}
 
@@ -27,6 +29,39 @@ Generator.ValueKindToLua = {
     Any = "any"
 }
 
+local startingText = [[--- @diagnostic disable
+-- Special global value that contains the current mod UUID during load
+ModuleUUID = "UUID"
+
+---Using a DB like a function will allow inserting new values into the database (ex. `Osi.DB_IsPlayer("02a77f1f-872b-49ca-91ab-32098c443beb")`  
+---@overload fun(...:string|number|nil)
+---@class OsiDatabase
+local OsiDatabase = {}
+--- Databases can be read using the Get method. The method checks its parameters against the database and only returns rows that match the query.  
+--- The number of parameters passed to Get must be equivalent to the number of columns in the target database.  
+--- Each parameter defines an (optional) filter on the corresponding column.  
+--- If the parameter is nil, the column is not filtered (equivalent to passing _ in Osiris). If the parameter is not nil, only rows with matching values will be returned.
+---@vararg string|number|nil
+---@return table<integer,table<integer,string|number>>
+function OsiDatabase:Get(...) end
+--- The Delete method can be used to delete rows from databases.  
+--- The number of parameters passed to Delete must be equivalent to the number of columns in the target database.  
+--- Each parameter defines an (optional) filter on the corresponding column.  
+--- If the parameter is nil, the column is not filtered (equivalent to passing _ in Osiris). If the parameter is not nil, only rows with matching values will be deleted. 
+---@vararg string|number|nil
+function OsiDatabase:Delete(...) end
+
+---@class Osi
+---@field DB_IsPlayer OsiDatabase|fun(GUID:string) All player characters
+---@field DB_Origins OsiDatabase|fun(GUID:string) All origin characters
+---@field DB_Avatars OsiDatabase|fun(GUID:string) All player characters that were created in character creation, or that have an `AVATAR` tag
+---@field DB_CombatObjects OsiDatabase|fun(GUID:string, combatID:integer) All objects in combat
+---@field DB_CombatCharacters OsiDatabase|fun(GUID:string, combatID:integer) All characters in combat
+---@field DB_Dialogs OsiDatabase|fun(GUID:string, dialog:string)|fun(GUID1:string, GUID2:string, dialog:string)|fun(GUID1:string, GUID2:string, GUID3:string, dialog:string)|fun(GUID1:string, GUID2:string, GUID3:string, GUID4:string, dialog:string) All registered dialogs for objects, the most common being the version with a single character
+Osi = {}
+
+]]
+
 function Generator:New()
     local o = {}
     setmetatable(o, self)
@@ -37,7 +72,7 @@ function Generator:New()
     o.Modules = {}
     o.NativeClasses = {}
     o.NativeModules = {}
-    o.Text = "--- @diagnostic disable\n"
+    o.Text = startingText
     self.__index = self
     return o
 end
@@ -65,7 +100,7 @@ function Generator:LoadNativeData()
     end
 end
 
-function Generator:Build()
+function Generator:Build(addOsi)
     local types = Ext.Types.GetAllTypes()
     local sortedTypes = {}
 
@@ -119,10 +154,13 @@ function Generator:Build()
         self:EmitEmptyLine()
         self:EmitEmptyLine()
     end
-
+    
     self:EmitExt("Client")
     self:EmitExt("Server")
     self:EmitExt(nil, true)
+    if addOsi then
+        self:EmitLine(_OsiLines)
+    end
 end
 
 function Generator:MakeTypeName(type)
@@ -562,6 +600,8 @@ function Generator:EmitExt(role, declareGlobal)
     if declareGlobal then
         self:EmitLine("Ext = {Events = {}}")
         self:EmitEmptyLine()
+        self:EmitLine("--#region Extender Events")
+        self:EmitEmptyLine()
         for k,v in pairs(_CustomEntries.Specific) do
             self:EmitLine(v)
             if k == "SubscribableEventType" then
@@ -569,6 +609,8 @@ function Generator:EmitExt(role, declareGlobal)
             end
             self:EmitEmptyLine()
         end
+        self:EmitLine("--#endregion")
+        self:EmitEmptyLine()
         for _,v in ipairs(_CustomEntries.Misc) do
             self:EmitLine(v)
             self:EmitEmptyLine()
@@ -579,12 +621,13 @@ function Generator:EmitExt(role, declareGlobal)
 end
 
 ---@param outputPath string|nil
-Ext.Types.GenerateIdeHelpers = function (outputPath)
+---@param addOsi boolean|nil
+Ext.Types.GenerateIdeHelpers = function (outputPath, addOsi)
     _eventTypeGenerationData = {}
     _eventTypeGenerationDataIndex = {}
     local gen = Generator:New()
     gen:LoadNativeData()
-    gen:Build()
+    gen:Build(addOsi)
     if outputPath then
         Ext.IO.SaveFile(outputPath, gen.Text)
     end

@@ -133,4 +133,13 @@ Ext_ClientUI.TypeID = {
 	waypoints_c = 78,
 	worldTooltip = 48,
 }]]},
+Ext_Types = {
+	After = [[
+--- Generate an ExtIdeHelpers file  
+--- @param outputPath string|nil Optional path to save the generated helper file, relative to the `Documents\Larian Studios\Divinity Original Sin 2 Definitive Edition\Osiris Data` folder  
+--- @param addOsi boolean|nil If true, all Osiris functions will be included in the Osi global table. This is optional, due to the possible performance cost of having so many functions  
+--- @return string fileContents Returns the file contents, for use with Ext.IO.SaveFile
+function Ext_Types.GenerateIdeHelpers(outputPath, addOsi) end
+]]
+}
 }

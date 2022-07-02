@@ -9,6 +9,7 @@ return {
 	Misc = {
 [[
 --#region Deprecated Functions (moved to Ext modules)
+
 --- @deprecated
 --- Returns the version number of the Osiris Extender
 --- @return integer
@@ -803,6 +804,7 @@ function Ext.HandleToDouble(handle) end
 --- @param handle number Double handle to cast
 --- @return ObjectHandle|StatusHandle
 function Ext.DoubleToHandle(handle) end
+
 --#endregion
 ]]
 	},
