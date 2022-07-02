@@ -1,5 +1,8 @@
-local _NEWLINE = "\r\n"
+local _DEBUG = Ext.Debug.IsDeveloperMode()
+
 local _format = string.format
+
+local _NEWLINE = "\r\n"
 
 ---@type {Specific:table<string,string>, Misc:string[]}
 local _CustomEntries = Ext.Utils.Include(nil, "builtin://Libs/HelpersGenerator/CustomEntries.lua")
@@ -96,8 +99,8 @@ function Generator:LoadNativeData()
             self.NativeModules[name] = mod
         end
     else
-        Ext.PrintWarning("Unable to load native class data; IDE helpers will not include annotations from C++ code")
-        Ext.PrintWarning(res)
+        Ext.Utils.PrintWarning("Unable to load native class data; IDE helpers will not include annotations from C++ code")
+        Ext.Utils.PrintWarning(res)
     end
 end
 
@@ -551,7 +554,9 @@ end
 local function GenerateSubscriptionEvents(self)
     for _,k in pairs(Ext._Internal._PublishedSharedEvents) do
         if not _eventTypeGenerationDataIndex[k] then
-            Ext.PrintWarning("Found unregistered event", k)
+            if _DEBUG then
+                Ext.Utils.PrintWarning("Found unregistered event", k)
+            end
             _eventTypeGenerationData[#_eventTypeGenerationData+1] = {Type="LuaEmptyEventParams", Event = k, Context = "any"}
         end
     end

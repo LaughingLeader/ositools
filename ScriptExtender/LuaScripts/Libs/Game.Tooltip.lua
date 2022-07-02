@@ -1573,6 +1573,7 @@ function TooltipData:GetDescriptionElement()
 			return element
 		end
 	end
+	return nil
 end
 
 local function _IsTooltipElement(ele)
@@ -1610,6 +1611,7 @@ function TooltipData:GetElement(t, fallback)
 		self:AppendElement(fallback)
 		return fallback
 	end
+	return nil
 end
 
 ---Get the last element in the tooltip data of the given type.
@@ -1630,6 +1632,7 @@ function TooltipData:GetLastElement(t, fallback)
 		self:AppendElement(fallback)
 		return fallback
 	end
+	return nil
 end
 
 ---@overload fun(self:TooltipData, t:TooltipElementType)
