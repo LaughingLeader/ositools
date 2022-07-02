@@ -1,8 +1,9 @@
+---@diagnostic disable
 
-local SubscribableEventType = [[---@class SubscribableEvent<T>:{ Subscribe:fun(self:SubscribableEvent, callback:fun(e:T|SubscribableEventParams), opts:{Priority:integer, Once:boolean}|nil):integer, Unsubscribe:fun(self:SubscribableEvent, index:integer)}
+local SubscribableEventType = [[--- @class SubscribableEvent<T>:{ Subscribe:fun(self:SubscribableEvent, callback:fun(e:T|SubscribableEventParams), opts:{Priority:integer, Once:boolean}|nil):integer, Unsubscribe:fun(self:SubscribableEvent, index:integer)}
 
----@class SubscribableEventParams
----@field StopPropagation fun(self:SubscribableEventParams) Stop the event from continuing on to other registered listeners.]]
+--- @class SubscribableEventParams
+--- @field StopPropagation fun(self:SubscribableEventParams) Stop the event from continuing on to other registered listeners.]]
 
 return {
 	Specific = {SubscribableEventType = SubscribableEventType},
@@ -33,7 +34,7 @@ function Ext.Require(fileName) end
 --- @param callback function Lua function to run when the event fires
 function Ext.RegisterListener(event, callback) end
 
----@alias OsirisEventType string|"before"|"after"|"beforeDelete"|"afterDelete"
+--- @alias OsirisEventType string|"before"|"after"|"beforeDelete"|"afterDelete"
 
 --- @deprecated
 --- Registers a function that is called when certain Osiris functions are called.
@@ -108,7 +109,7 @@ function Ext.GetModLoadOrder() end
 --- @return ModInfo
 function Ext.GetModInfo(modGuid) end
 
----@alias StatType string|"SkillData"|"Potion"|"StatusData"|"Weapon"|"Armor"|"Shield"|"DeltaMod"|"Object"
+--- @alias StatType string|"SkillData"|"Potion"|"StatusData"|"Weapon"|"Armor"|"Shield"|"DeltaMod"|"Object"
 
 --- @deprecated
 --- Returns the list of loaded stat entries
@@ -283,7 +284,7 @@ function Ext.StatSetLevelScaling(statType, attribute, func) end
 --- @return StatEntryArmor|StatEntryCharacter|StatEntryObject|StatEntryPotion|StatEntryShield|StatEntrySkillData|StatEntryStatusData|StatEntryWeapon
 function Ext.GetStat(stat, level) end
 
----@alias StatEntryType StatEntryArmor|StatEntryCharacter|StatEntryObject|StatEntryPotion|StatEntryShield|StatEntrySkillData|StatEntryStatusData|StatEntryWeapon
+--- @alias StatEntryType StatEntryArmor|StatEntryCharacter|StatEntryObject|StatEntryPotion|StatEntryShield|StatEntrySkillData|StatEntryStatusData|StatEntryWeapon
 
 --- @deprecated
 --- Creates a new stats entry on the server
@@ -555,7 +556,7 @@ function Ext.IsDeveloperMode() end
 --- @return string
 function Ext.GetGameState() end
 
----@alias GameMode string|"Campaign"|"GameMaster"|"Arena"
+--- @alias GameMode string|"Campaign"|"GameMaster"|"Arena"
 
 --- @deprecated
 --- Returns the current gamemode.
@@ -594,7 +595,7 @@ function Ext.PostMessageToUser(userId, channel, payload) end
 --- @param payload string Message payload
 function Ext.PostMessageToServer(channel, payload) end
 
----@alias NetListenerCallback fun(channel:string, payload:string, user:integer|nil):void
+--- @alias NetListenerCallback fun(channel:string, payload:string, user:integer|nil):void
 
 --- Registers a listener that is called when a network message is received on the specified channel
 --- @param channel string Network channel name
@@ -695,8 +696,8 @@ function Ext.UISetDirty(character, flags) end
 --- @param enable boolean
 function Ext.UIEnableCustomDrawCallDebugging(enable) end
 
----@alias UICallbackHandler fun(ui:UIObject, event:string, ...:string|boolean|number):void
----@alias UICallbackEventType string|"Before"|"After"
+--- @alias UICallbackHandler fun(ui:UIObject, event:string, ...:string|boolean|number):void
+--- @alias UICallbackEventType string|"Before"|"After"
 
 --- @deprecated
 --- Registers a listener that is called when the specified function is called from Flash
