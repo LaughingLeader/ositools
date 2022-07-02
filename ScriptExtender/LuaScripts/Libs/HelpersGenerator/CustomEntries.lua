@@ -699,7 +699,6 @@ function Ext.UIEnableCustomDrawCallDebugging(enable) end
 --- @alias UICallbackHandler fun(ui:UIObject, event:string, ...:string|boolean|number):void
 --- @alias UICallbackEventType string|"Before"|"After"
 
---- @deprecated
 --- Registers a listener that is called when the specified function is called from Flash
 --- @param object UIObject UI object returned from Ext.CreateUI, Ext.GetUI or Ext.GetBuiltinUI
 --- @param name string ExternalInterface function name
@@ -707,7 +706,6 @@ function Ext.UIEnableCustomDrawCallDebugging(enable) end
 --- @param type UICallbackEventType|nil Event type - 'Before' or 'After'
 function Ext.RegisterUICall(object, name, handler, type) end
 
---- @deprecated
 --- Registers a listener that is called when the specified function is called from Flash.
 --- The event is triggered for every UI element with the specified type ID.
 --- @param typeId number Engine UI element type ID
@@ -716,7 +714,6 @@ function Ext.RegisterUICall(object, name, handler, type) end
 --- @param type UICallbackEventType|nil Event type - 'Before' or 'After'
 function Ext.RegisterUITypeCall(typeId, name, handler, type) end
 
---- @deprecated
 --- Registers a listener that is called when the specified function is called from Flash.
 --- The event is triggered regardless of which UI element it was called on.
 --- (Function call capture must be enabled for every element type that needs to monitored!)
@@ -725,7 +722,6 @@ function Ext.RegisterUITypeCall(typeId, name, handler, type) end
 --- @param type UICallbackEventType|nil Event type - 'Before' or 'After'
 function Ext.RegisterUINameCall(name, handler, type) end
 
---- @deprecated
 --- Registers a listener that is called when the specified method is called on the main timeline of the Flash object
 --- @param object UIObject UI object returned from Ext.CreateUI, Ext.GetUI or Ext.GetBuiltinUI
 --- @param name string Flash method name
@@ -733,7 +729,6 @@ function Ext.RegisterUINameCall(name, handler, type) end
 --- @param type UICallbackEventType|nil Event type - 'Before' or 'After'
 function Ext.RegisterUIInvokeListener(object, name, handler, type) end
 
---- @deprecated
 --- Registers a listener that is called when the specified method is called on the main timeline of the Flash object
 --- The event is triggered for every UI element with the specified type ID.
 --- @param typeId number Engine UI element type ID
@@ -742,7 +737,6 @@ function Ext.RegisterUIInvokeListener(object, name, handler, type) end
 --- @param type UICallbackEventType|nil Event type - 'Before' or 'After'
 function Ext.RegisterUITypeInvokeListener(typeId, name, handler, type) end
 
---- @deprecated
 --- Registers a listener that is called when the specified method is called on the main timeline of the Flash object
 --- The event is triggered regardless of which UI element it was called on.
 --- @param name string Flash method name
@@ -750,7 +744,6 @@ function Ext.RegisterUITypeInvokeListener(typeId, name, handler, type) end
 --- @param type UICallbackEventType|nil Event type - 'Before' or 'After'
 function Ext.RegisterUINameInvokeListener(name, handler, type) end
 
---- @deprecated
 --- Registers a listener that is called when a console command is entered in the dev console
 --- @param cmd string Console command
 --- @param handler fun(cmd:string, ...:string):void

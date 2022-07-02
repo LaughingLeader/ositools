@@ -18,8 +18,10 @@ local _EXTVERSION = Ext.Utils.Version()
 local _DEBUG = Ext.Debug.IsDeveloperMode()
 local _UITYPE = Ext.UI.TypeID
 
+local _GetGameState = Ext.Client.GetGameState
 local _GetCharacter = Ext.Entity.GetCharacter
 local _GetUIByType = Ext.UI.GetByType
+local _GetUIByPath = Ext.UI.GetByPath
 local _HandleToDouble = Ext.UI.HandleToDouble
 local _DoubleToHandle = Ext.UI.DoubleToHandle
 local _IsValidHandle = Ext.Utils.IsValidHandle
@@ -29,6 +31,7 @@ local _RegisterUITypeInvokeListener = Ext.RegisterUITypeInvokeListener
 local _RegisterRegisterUITypeCall = Ext.RegisterUITypeCall
 local _RegisterUINameCall = Ext.RegisterUINameCall
 local _RegisterUINameInvokeListener = Ext.RegisterUINameInvokeListener
+local _Require = Ext.Utils.Include
 local _Print = Ext.Utils.Print
 local _PrintWarning = Ext.Utils.PrintWarning
 local _PrintError = Ext.Utils.PrintError
@@ -44,7 +47,7 @@ if Game.Tooltip == nil then
 end
 
 ---@type GameTooltipRequestProcessor
-local RequestProcessor = Ext.Utils.Include(nil, "builtin://Libs/Game.Tooltip.RequestProcessor.lua")
+local RequestProcessor = _Require(nil, "builtin://Libs/Game.Tooltip.RequestProcessor.lua")
 Game.Tooltip.RequestProcessor = RequestProcessor
 
 local game = Game
@@ -1302,9 +1305,12 @@ function TooltipHooks:OnRenderTooltip(arrayData, ui, method, ...)
 			local compareItem = self:GetCompareItem(ui, reqItem, false)
 			if compareItem ~= nil then
 				local lastObjectHandle = req.ObjectHandleDouble
+				local lastStatsId = req.StatsId
 				req.ObjectHandleDouble = _HandleToDouble(compareItem.Handle)
+				req.StatsId = compareItem.StatsId
 				self:OnRenderSubTooltip(ui, arrayData.CompareMain, req, method, ...)
 				req.ObjectHandleDouble = lastObjectHandle
+				req.StatsId = lastStatsId
 			else
 				_PrintError("Tooltip compare render failed: Couldn't find item to compare")
 			end
@@ -1314,9 +1320,12 @@ function TooltipHooks:OnRenderTooltip(arrayData, ui, method, ...)
 			local compareItem = self:GetCompareItem(ui, reqItem, true)
 			if compareItem ~= nil then
 				local lastObjectHandle = req.ObjectHandleDouble
+				local lastStatsId = req.StatsId
 				req.ObjectHandleDouble = _HandleToDouble(compareItem.Handle)
+				req.StatsId = compareItem.StatsId
 				self:OnRenderSubTooltip(ui, arrayData.CompareOff, req, method, ...)		
 				req.ObjectHandleDouble = lastObjectHandle
+				req.StatsId = lastStatsId
 			else
 				_PrintError("Tooltip compare render failed: Couldn't find off-hand item to compare")
 			end
@@ -1999,7 +2008,7 @@ local function CaptureBuiltInUIs()
 end
 
 local function EnableHooks()
-	RequestProcessor.ControllerEnabled = (Ext.UI.GetByPath("Public/Game/GUI/msgBox_c.swf") or _GetUIByType(_UITYPE.msgBox_c)) ~= nil
+	RequestProcessor.ControllerEnabled = (_GetUIByPath("Public/Game/GUI/msgBox_c.swf") or _GetUIByType(_UITYPE.msgBox_c)) ~= nil
 
 	if TooltipHooks.InitializationRequested then
 		TooltipHooks:Init()
@@ -2028,7 +2037,7 @@ Ext.Events.UIObjectCreated:Subscribe(function (e)
 	-- Has the 'no flash player' warning if the root is nil
 	if ui:GetRoot() ~= nil then
 		ui:CaptureInvokes()
-	elseif Ext.GetGameState() == "Running" then
+	elseif _GetGameState() == "Running" then
 		--Defer by a tick
 		Ext.Events.Tick:Subscribe(function (_e)
 			CaptureBuiltInUIs()
