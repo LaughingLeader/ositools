@@ -372,14 +372,12 @@ function Ext.ExecuteSurfaceAction(action) end
 --- @param actionHandle integer Action to cancel
 function Ext.CancelSurfaceAction(actionHandle) end
 
---- @deprecated
 --- Starts creating a new item using template UUID or cloning an existing item.
 --- @param from EsvItem|string Template UUID or item to clone
 --- @param recursive boolean|nil Copy items in container? (cloning only)
 --- @return ItemConstructor
 function Ext.CreateItemConstructor(from, recursive) end
 
---- @deprecated
 --- Begin applying a status on the specified character or item.
 --- @param target string|ObjectHandle Target character/item
 --- @param statusId string Status ID to apply
@@ -387,11 +385,11 @@ function Ext.CreateItemConstructor(from, recursive) end
 --- @return EsvStatus|nil
 function Ext.PrepareStatus(target, statusId, lifeTime) end
 
---- @deprecated
 --- Finish applying a status on the specified character or item.
 --- @param status EsvStatus Status to apply
 function Ext.ApplyStatus(status) end
 
+--- @see Ext_ServerCustomStat#GetAll
 --- @deprecated
 --- Returns a table containing the UUID of all registered custom stat definitions
 --- @return string[]

@@ -33,6 +33,7 @@ Generator.ValueKindToLua = {
 }
 
 local startingText = [[--- @diagnostic disable
+
 --- Special global value that contains the current mod UUID during load
 --- @type FixedString
 ModuleUUID = "UUID"
