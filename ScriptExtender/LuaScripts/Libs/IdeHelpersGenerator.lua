@@ -2,7 +2,7 @@ local _DEBUG = Ext.Debug.IsDeveloperMode()
 
 local _format = string.format
 
-local _NEWLINE = "\r\n"
+local NEWLINE = "\r\n"
 
 ---@type {Specific:table<string,string>, Misc:string[]}
 local _CustomEntries = Ext.Utils.Include(nil, "builtin://Libs/HelpersGenerator/CustomEntries.lua")
@@ -231,18 +231,18 @@ function Generator:MakeTypeSignature(cls, type, forceExpand, nativeDefn)
 end
 
 function Generator:EmitEmptyLine()
-    self.Text = self.Text .. _NEWLINE
+    self.Text = self.Text .. NEWLINE
 end
 
 function Generator:EmitLine(text, skipNewline)
-    self.Text = self.Text .. text .. _NEWLINE
+    self.Text = self.Text .. text .. NEWLINE
     if not skipNewline then
-        self.Text = self.Text .. _NEWLINE
+        self.Text = self.Text .. NEWLINE
     end
 end
 
 function Generator:EmitComment(text)
-    self.Text = self.Text .. "--- " .. text .. _NEWLINE
+    self.Text = self.Text .. "--- " .. text .. NEWLINE
 end
 
 function Generator:EmitMultiLineComment(text)
@@ -370,11 +370,11 @@ function Generator:EmitFullMethodSignature(cls, funcName, fun, nativeMethod, aft
     end
 
     fun = fun .. funcName .. "(" .. table.concat(args, ", ") .. ") end"
-    local desc = table.concat(argDescs, _NEWLINE)
+    local desc = table.concat(argDescs, NEWLINE)
 
     local funcDesc = self.Trim(nativeMethod.description)
     if nativeMethod.implementation_file ~= nil and #funcDesc > 0 then
-        funcDesc = funcDesc .. _NEWLINE .. "Location: " .. nativeMethod.implementation_file .. ":" .. nativeMethod.implementation_line
+        funcDesc = funcDesc .. NEWLINE .. "Location: " .. nativeMethod.implementation_file .. ":" .. nativeMethod.implementation_line
     end
 
     if #funcDesc > 0 then
@@ -382,28 +382,28 @@ function Generator:EmitFullMethodSignature(cls, funcName, fun, nativeMethod, aft
     end
 
     if desc ~= "" then
-        self.Text = self.Text .. desc .. _NEWLINE .. fun
+        self.Text = self.Text .. desc .. NEWLINE .. fun
     else
         self.Text = self.Text .. fun
     end
     if afterText then
-        self.Text = self.Text .. _NEWLINE .. afterText
+        self.Text = self.Text .. NEWLINE .. afterText
     end
-    self.Text = self.Text .. _NEWLINE .. _NEWLINE
+    self.Text = self.Text .. NEWLINE .. NEWLINE
 end
 
-local _serverEventParamsPattern = "EsvLua(%a+)EventParams"
-local _clientEventParamsPattern = "EclLua(%a+)EventParams"
-local _bothContextEventParamsPattern = "(%a+)EventParams"
+local serverEventParamsPattern = "EsvLua(%a+)EventParams"
+local clientEventParamsPattern = "EclLua(%a+)EventParams"
+local bothContextEventParamsPattern = "(%a+)EventParams"
 
-local _eventTypeGenerationData = {}
-local _eventTypeGenerationDataIndex = {}
-local _EVENT_NAME_SWAP = {
+local eventTypeGenerationData = {}
+local eventTypeGenerationDataIndex = {}
+local EVENT_NAME_SWAP = {
     GameStateChange = "GameStateChanged",
     LuaTick = "Tick",
     LuaConsole = "DoConsoleCommand",
 }
-local _IGNORE_PARAMS = {
+local IGNORE_PARAMS = {
     LuaEmptyEventParams = true
 }
 
@@ -455,35 +455,35 @@ function Generator:EmitClass(type)
         end
     end
 
-    if not _IGNORE_PARAMS[name] and string.find(name, "EventParams") then
+    if not IGNORE_PARAMS[name] and string.find(name, "EventParams") then
         local context = "any"
-        local _,_,eventName = string.find(name, _serverEventParamsPattern)
+        local _,_,eventName = string.find(name, serverEventParamsPattern)
         if not eventName then
-            _,_,eventName = string.find(name, _clientEventParamsPattern)
+            _,_,eventName = string.find(name, clientEventParamsPattern)
             if eventName then
                 context = "client"
             else
-                _,_,eventName = string.find(name, _bothContextEventParamsPattern)
+                _,_,eventName = string.find(name, bothContextEventParamsPattern)
             end
         else
             context = "server"
         end
         if eventName then
-            if _EVENT_NAME_SWAP[eventName] then
-                eventName = _EVENT_NAME_SWAP[eventName]
+            if EVENT_NAME_SWAP[eventName] then
+                eventName = EVENT_NAME_SWAP[eventName]
             else
                 eventName = eventName:gsub("^Lua", "")
             end
-            local lastIndex = _eventTypeGenerationDataIndex[eventName]
+            local lastIndex = eventTypeGenerationDataIndex[eventName]
             if lastIndex == nil then
-                lastIndex = #_eventTypeGenerationData+1
+                lastIndex = #eventTypeGenerationData+1
             else
-                local lastData = _eventTypeGenerationData[lastIndex]
+                local lastData = eventTypeGenerationData[lastIndex]
                 name = lastData.Type .. "|" .. name
                 context = "any"
             end
-            _eventTypeGenerationData[lastIndex] = {Type = name, Event = eventName, Context = context}
-            _eventTypeGenerationDataIndex[eventName] = lastIndex
+            eventTypeGenerationData[lastIndex] = {Type = name, Event = eventName, Context = context}
+            eventTypeGenerationDataIndex[eventName] = lastIndex
         end
     end
 end
@@ -554,15 +554,15 @@ end
 
 local function GenerateSubscriptionEvents(self)
     for _,k in pairs(Ext._Internal._PublishedSharedEvents) do
-        if not _eventTypeGenerationDataIndex[k] then
+        if not eventTypeGenerationDataIndex[k] then
             if _DEBUG then
                 Ext.Utils.PrintWarning("Found unregistered event", k)
             end
-            _eventTypeGenerationData[#_eventTypeGenerationData+1] = {Type="LuaEmptyEventParams", Event = k, Context = "any"}
+            eventTypeGenerationData[#eventTypeGenerationData+1] = {Type="LuaEmptyEventParams", Event = k, Context = "any"}
         end
     end
-    table.sort(_eventTypeGenerationData, function(a,b) return a.Event < b.Event end)
-    for _,v in ipairs(_eventTypeGenerationData) do
+    table.sort(eventTypeGenerationData, function(a,b) return a.Event < b.Event end)
+    for _,v in ipairs(eventTypeGenerationData) do
         if v.Context == "server" then
             self:EmitComment("🔨**Server-Only**🔨  ")
         elseif v.Context == "client" then
@@ -630,8 +630,8 @@ end
 ---@param outputPath string|nil
 ---@param addOsi boolean|nil
 Ext.Types.GenerateIdeHelpers = function (outputPath, addOsi)
-    _eventTypeGenerationData = {}
-    _eventTypeGenerationDataIndex = {}
+    eventTypeGenerationData = {}
+    eventTypeGenerationDataIndex = {}
     local gen = Generator:New()
     gen:LoadNativeData()
     gen:Build(addOsi)
