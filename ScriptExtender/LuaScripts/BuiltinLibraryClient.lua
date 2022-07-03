@@ -285,8 +285,7 @@ Ext.PostMessageToServer = CallDeprecated(Ext.Net.PostMessageToServer, "PostMessa
 Ext.GetGameState = CallDeprecated(Ext.Client.GetGameState, "GetGameState", "Client.GetGameState")
 Ext.UpdateShroud = CallDeprecated(Ext.Client.UpdateShroud, "UpdateShroud", "Client.UpdateShroud")
 
----@overload fun(string:UISWFName):integer
----@diagnostic disable-next-line undefined-field
+---@overload fun(string:BuiltinUISWFName):integer
 Ext.UI.TypeID = {
 	actionProgression = 0,
 	addContent = 57,
@@ -309,7 +308,7 @@ Ext.UI.TypeID = {
 	combatTurn = 8,
 	connectionMenu = 33,
 	connectivity_c = 34,
-	containerInventory = { Default = 9, Pickpocket = 37},
+	containerInventory = { Default = 9, Pickpocket = 37 },
 	containerInventoryGM = 143,
 	contextMenu = { Default = 10, Object = 11 },
 	contextMenu_c = { Default = 12, Object = 96 },
@@ -446,7 +445,6 @@ local function _UITypeIDCall(tbl, key)
 	return id
 end
 
----@diagnostic disable-next-line undefined-field
 setmetatable(Ext.UI.TypeID, {
 	__call = _UITypeIDCall
 })
