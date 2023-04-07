@@ -519,6 +519,7 @@ function Game.Math.CalculateWeaponDamage(attacker, weapon, noRandomization)
 		if len >= 3 then
 			for i=3,len do
 				local v = attacker.DynamicStats[i]
+				--Needs an IsBoostActive check
 				if v and v.BonusWeapon and v.BonusWeapon ~= "" then
 					bonusWeapons[#bonusWeapons+1] = {
 						Name = v.BonusWeapon,
@@ -533,10 +534,11 @@ function Game.Math.CalculateWeaponDamage(attacker, weapon, noRandomization)
 			local bonusWeaponStats = Ext.Stats.GetItemBaseStats(name, attacker.Level)
 			if bonusWeaponStats then
 				local bonusWeaponDamage = Ext.Stats.NewDamageList()
-				Game.Math.CalculateWeaponScaledDamage(attacker, bonusWeaponStats, bonusWeaponDamage, noRandomization)
 				if multiplier ~= 0 then
-					bonusWeaponDamage:Multiply(1 + (multiplier * 0.01))
+					local base = bonusWeaponStats.DynamicStats[1] --[[@as CDivinityStatsEquipmentAttributesWeapon]]
+					base.DamageBoost = multiplier
 				end
+				Game.Math.CalculateWeaponScaledDamage(attacker, bonusWeaponStats, bonusWeaponDamage, noRandomization)
 				damageList:Merge(bonusWeaponDamage)
 			end
 		end
