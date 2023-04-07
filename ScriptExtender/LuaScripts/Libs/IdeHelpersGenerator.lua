@@ -102,21 +102,21 @@ PersistentVars = {}
 
 --- @alias OsirisValue number|string
 
---- Using a DB like a function will allow inserting new values into the database (ex. `Osi.DB_IsPlayer("02a77f1f-872b-49ca-91ab-32098c443beb")`  
+--- Using a DB like a function will allow inserting new values into the database (ex. `Osi.DB_IsPlayer("02a77f1f-872b-49ca-91ab-32098c443beb")`
 --- @overload fun(...:OsirisValue|nil)
 --- @class OsiDatabase
 local OsiDatabase = {}
---- Databases can be read using the Get method. The method checks its parameters against the database and only returns rows that match the query.  
---- The number of parameters passed to Get must be equivalent to the number of columns in the target database.  
---- Each parameter defines an (optional) filter on the corresponding column.  
+--- Databases can be read using the Get method. The method checks its parameters against the database and only returns rows that match the query.
+--- The number of parameters passed to Get must be equivalent to the number of columns in the target database.
+--- Each parameter defines an (optional) filter on the corresponding column.
 --- If the parameter is nil, the column is not filtered (equivalent to passing _ in Osiris). If the parameter is not nil, only rows with matching values will be returned.
 --- @vararg OsirisValue|nil
 --- @return table<integer,table<integer,OsirisValue>>
 function OsiDatabase:Get(...) end
---- The Delete method can be used to delete rows from databases.  
---- The number of parameters passed to Delete must be equivalent to the number of columns in the target database.  
---- Each parameter defines an (optional) filter on the corresponding column.  
---- If the parameter is nil, the column is not filtered (equivalent to passing _ in Osiris). If the parameter is not nil, only rows with matching values will be deleted. 
+--- The Delete method can be used to delete rows from databases.
+--- The number of parameters passed to Delete must be equivalent to the number of columns in the target database.
+--- Each parameter defines an (optional) filter on the corresponding column.
+--- If the parameter is nil, the column is not filtered (equivalent to passing _ in Osiris). If the parameter is not nil, only rows with matching values will be deleted.
 --- @vararg OsirisValue|nil
 function OsiDatabase:Delete(...) end
 
@@ -131,7 +131,7 @@ function OsiDatabase:Delete(...) end
 --- @field DB_CombatCharacters OsiDatabase|fun(Guid:string, combatID:integer) All characters in combat
 --- @field DB_Dialogs OsiDatabase|fun(Guid:string, dialog:string)|fun(GUID1:string, GUID2:string, dialog:string)|fun(GUID1:string, GUID2:string, GUID3:string, dialog:string)|fun(GUID1:string, GUID2:string, GUID3:string, GUID4:string, dialog:string) All registered dialogs for objects, the most common being the version with a single character
 
---- The Osi table contains databases as well as calls, queries, events, and custom PROC / QRY defintions, as long as they are used in a script.  
+--- The Osi table contains databases as well as calls, queries, events, and custom PROC / QRY defintions, as long as they are used in a script.
 --- @type OsiCommonDatabases|OsiDynamic
 Osi = {}
 
@@ -157,6 +157,8 @@ Osi = {}
 --- @alias LevelMapName "Armor ArmorValue"|"Armor ConstitutionBoost"|"Armor FinesseBoost"|"Armor HearingBoost"|"Armor IntelligenceBoost"|"Armor MagicArmorValue"|"Armor MagicPointsBoost"|"Armor MemoryBoost"|"Armor SightBoost"|"Armor StrengthBoost"|"Armor Value"|"Armor VitalityBoost"|"Armor WitsBoost"|"ArmorUsageSkill"|"Character Act Strength"|"Character AirSpecialist"|"Character Armor"|"Character Constitution"|"Character Critical Chance"|"Character DualWielding"|"Character EarthSpecialist"|"Character Finesse"|"Character FireSpecialist"|"Character Gain"|"Character Hearing"|"Character Intelligence"|"Character Leadership"|"Character MagicArmor"|"Character Memory"|"Character Necromancy"|"Character Polymorph"|"Character Ranged"|"Character RangerLore"|"Character RogueLore"|"Character Sight"|"Character SingleHanded"|"Character Sourcery"|"Character Strength"|"Character Summoning"|"Character Telekinesis"|"Character TwoHanded"|"Character WarriorLore"|"Character WaterSpecialist"|"Character Wits"|"EmbellishSkill"|"IdentifyRangeSkill"|"Object Armor"|"Object Constitution"|"Object MagicArmor"|"Object Value"|"ObjectDurabilitySkill"|"Potion Armor"|"Potion Constitution"|"Potion Damage"|"Potion Finesse"|"Potion Gain"|"Potion Hearing"|"Potion Intelligence"|"Potion MagicArmor"|"Potion Memory"|"Potion Strength"|"Potion Value"|"Potion Vitality"|"Potion Wits"|"RepairRangeSkill"|"RewardExperience"|"Shield ArmorValue"|"Shield Blocking"|"Shield ConstitutionBoost"|"Shield FinesseBoost"|"Shield HearingBoost"|"Shield IntelligenceBoost"|"Shield MagicArmorValue"|"Shield MagicPointsBoost"|"Shield MemoryBoost"|"Shield SightBoost"|"Shield StrengthBoost"|"Shield Value"|"Shield VitalityBoost"|"Shield WitsBoost"|"SkillData AreaRadius"|"SkillData BackStart"|"SkillData ChanceToPierce"|"SkillData Duration"|"SkillData EndPosRadius"|"SkillData ExplodeRadius"|"SkillData ForkChance"|"SkillData FrontOffset"|"SkillData GrowSpeed"|"SkillData GrowTimeout"|"SkillData HealAmount"|"SkillData Height"|"SkillData HitPointsPercent"|"SkillData HitRadius"|"SkillData Lifetime"|"SkillData MaxDistance"|"SkillData NextAttackChance"|"SkillData NextAttackChanceDivider"|"SkillData Offset"|"SkillData Radius"|"SkillData Range"|"SkillData StatusChance"|"SkillData StatusClearChance"|"SkillData StatusLifetime"|"SkillData SurfaceRadius"|"SkillData TargetRadius"|"SkillData TravelSpeed"|"StatusData Radius"|"Value"|"Weapon ConstitutionBoost"|"Weapon Damage"|"Weapon FinesseBoost"|"Weapon HearingBoost"|"Weapon IntelligenceBoost"|"Weapon MagicPointsBoost"|"Weapon MemoryBoost"|"Weapon SightBoost"|"Weapon StrengthBoost"|"Weapon Value"|"Weapon VitalityBoost"|"Weapon WitsBoost"|"WisdomSkill"
 
 --- @alias StatsHealValueType "FixedValue"|"Percentage"|"Qualifier"|"Shield"|"TargetDependent"|"DamagePercentage"
+--- @alias CustomConditionEvaluateCallback (fun(condition:EsvServerConditionCheck|EclClientConditionCheck, conditionId:uint32, param:FixedString):boolean|nil)
+--- @alias CustomRequirementEvaluateCallback (fun(req:StatsRequirement, ctx:CustomRequirementContext):boolean|nil)
 
 ]]
 
@@ -180,7 +182,7 @@ function Generator:LoadNativeData()
     self.NativeClasses = {}
     self.NativeModules = {}
 
-    local status, res = xpcall(function () 
+    local status, res = xpcall(function ()
         local libsJson = Ext.Utils.Include(nil, 'builtin://Libs/IdeHelpersNativeData.lua')
         local libs = Ext.Json.Parse(libsJson)
 
@@ -189,7 +191,7 @@ function Generator:LoadNativeData()
 
     if status == true then
         self.NativeClasses = res.classes
-    
+
         for name,mod in pairs(res.modules) do
             self.NativeModules[name] = mod
         end
@@ -222,7 +224,7 @@ function Generator:GenerateExtraData(opts)
     self:EmitEmptyLine()
 
     local baseKeys = {"AbilityBaseValue", "AbilityMagicArmorBonusBase", "AbilityMagicArmorBonusMax", "AbilityMagicArmorBonusPerPoint", "AbilityPerseveranceArmorPerPoint", "AbilityPersuasionBonusPerPoint", "AbilityPhysArmorBonusBase", "AbilityPhysArmorBonusMax", "AbilityPhysArmorBonusPerPoint", "AbilityVitalityBonusBase", "AbilityVitalityBonusMax", "AbilityVitalityBonusPerPoint", "AiCoverProjectileTurnMemory", "Ally Joins Ally SightRange Multiplier", "ArmorAfterHitCooldown", "ArmorAmuletPercentage", "ArmorBeltPercentage", "ArmorFeetPercentage", "ArmorHandsPercentage", "ArmorHeadPercentage", "ArmorLowerBodyPercentage", "ArmorRegenConstGrowth", "ArmorRegenPercentageGrowth", "ArmorRegenTimer", "ArmorRingPercentage", "ArmorShieldPercentage", "ArmorToVitalityRatio", "ArmorUpperBodyPercentage", "AttributeBaseValue", "AttributeBoostGrowth", "AttributeCharCreationBonus", "AttributeGrowthDamp", "AttributeLevelGrowth", "AttributeSoftCap", "BlindRangePenalty", "Burn Contact Status Duration", "CarryWeightBase", "CarryWeightPerStr", "ChanceToSetStatusOnContact", "CharacterAttributePointsPerMemoryCapacity", "CharacterBaseMemoryCapacity", "CharacterBaseMemoryCapacityGrowth", "CharacterWeightHeavy", "CharacterWeightLight", "CharacterWeightMedium", "Chill Contact Status Duration", "CivilAbilityCap", "CivilAbilityLevelGrowth", "CivilPointOffset", "CleaveRangeOverride", "CombatAbilityAccuracyBonus", "CombatAbilityCap", "CombatAbilityCritBonus", "CombatAbilityCritMultiplierBonus", "CombatAbilityDamageBonus", "CombatAbilityDodgingBonus", "CombatAbilityLevelGrowth", "CombatAbilityNpcGrowth", "CombatAbilityReflectionBonus", "CriticalBonusFromWits", "DamageBoostFromAttribute", "DamageToThrownWeightRatio", "Decaying Touch Damage Modifier", "DeflectProjectileRange", "DodgingBoostFromAttribute", "DualWieldingAPPenalty", "DualWieldingDamagePenalty", "End Of Combat SightRange Multiplier", "EntangledContactStatusDuration", "ExpectedConGrowthForArmorCalculation", "ExpectedDamageBoostFromAttributePerLevel", "ExpectedDamageBoostFromSkillAbilityPerLevel", "ExpectedDamageBoostFromWeaponAbilityPerLevel", "FirstItemTypeShift", "FirstPriceLeapGrowth", "FirstPriceLeapLevel", "FirstVitalityLeapGrowth", "FirstVitalityLeapLevel", "Flanked penalty", "FleeDistance", "FourthPriceLeapGrowth", "FourthPriceLeapLevel", "FourthVitalityLeapGrowth", "FourthVitalityLeapLevel", "FreeMovementDistanceWhenAttacking", "Freeze Contact Status Duration", "GhostLifeTime", "GlobalGoldValueMultiplier", "GMCharacterAPCap", "GMCharacterArmorCap", "GMCharacterAttributeCap", "GMCharacterResistanceMax", "GMCharacterResistanceMin", "GMCharacterSPCap", "GMItemArmorMax", "GMItemArmorMin", "GMItemAttributeCap", "GMItemLevelCap", "GMItemResistanceMax", "GMItemResistanceMin", "Haste Speed Modifier", "HealToDamageRatio", "HighGroundBaseDamageBonus", "HighGroundMeleeRange", "HighGroundRangeMultiplier", "HighGroundThreshold", "HintDuration", "IncarnateSummoningLevel", "Infectious Disease Depth", "Infectious Disease Radius", "InitiativeBonusFromWits", "LeadershipAllResBonus", "LeadershipDodgingBonus", "LeadershipRange", "LevelCap", "LifestealFromReflectionModifier", "LivingArmorHealPercentage", "LoneWolfAPBonus", "LoneWolfArmorBoostPercentage", "LoneWolfMagicArmorBoostPercentage", "LoneWolfMaxAPBonus", "LoneWolfVitalityBoostPercentage", "LoremasterBonusToMemory", "LowGroundBaseDamagePenalty", "MagicArmorAfterHitCooldown", "MagicArmorRegenConstGrowth", "MagicArmorRegenPercentageGrowth", "MagicArmorRegenTimer", "MagicArmourBoostFromAttribute", "Max Throw Distance", "MaximumSummonsInCombat", "Min Throw Distance", "MonsterDamageBoostPerLevel", "MoveToCarryWeightRatio", "NPC max combat turn time", "NumStartingCivilAbilityPoints", "NumStartingCombatAbilityPoints", "Offhand Attack Shield Block", "Oiled Chance to Burn Boost", "Once Per Combat Skill Realtime Cooldown", "Painted surface status chance", "PersuasionAttitudeBonusPerPoint", "PhysicalArmourBoostFromAttribute", "PickpocketExperienceLevelsPerPoint", "PickpocketGoldValuePerPoint", "PickpocketRequirementDecreaseFromFinesse", "PickpocketWeightPerPoint", "Poison Contact Status Duration", "PoisonedFoodDamage", "PoisonedFoodDamageMultiplier", "PoisonedFoodDamageRange", "PriceAttitudeCoefficient", "PriceBarterCoefficient", "PriceGrowth", "PriceModCasualDifficulty", "PriceModClassicDifficulty", "PriceModHardcoreDifficulty", "PriceRoundToFiveAfterAmount", "PriceRoundToTenAfterAmount", "Projectile Terrain Offset", "RangeBoostedGlobalCap", "SavethrowBelowLowPenalty", "SavethrowHighChance", "SavethrowLowChance", "SavethrowPenaltyCap", "SecondItemTypeShift", "SecondPriceLeapGrowth", "SecondPriceLeapLevel", "SecondVitalityLeapGrowth", "SecondVitalityLeapLevel", "Shackles Of Pain Damage Modifier", "ShieldAPCost", "Skill Range Per Ability", "SkillAbilityAirDamageBoostPerPoint", "SkillAbilityArmorRestoredPerPoint", "SkillAbilityCritMultiplierPerPoint", "SkillAbilityDamageToMagicArmorPerPoint", "SkillAbilityDamageToPhysicalArmorPerPoint", "SkillAbilityFireDamageBoostPerPoint", "SkillAbilityHighGroundBonusPerPoint", "SkillAbilityLifeStealPerPoint", "SkillAbilityMovementSpeedPerPoint", "SkillAbilityPhysicalDamageBoostPerPoint", "SkillAbilityPoisonAndEarthDamageBoostPerPoint", "SkillAbilitySummonsStatsPerPoint", "SkillAbilityVitalityRestoredPerPoint", "SkillAbilityWaterDamageBoostPerPoint", "SkillCombustionRadius", "SkillHeightRangeMultiplier", "SkillMemoryCostReductionFromAbility", "Slow Speed Modifier", "SmokeDurationAfterDecay", "Sneak Damage Multiplier", "SneakDefaultAPCost", "SneakingAbilityMovementSpeedPerPoint", "SneakSpeedBoost", "SoftLevelCap", "SpiritVisionFallbackRadius", "StatusDefaultDistancePerDamage", "Stun Contact Status Duration", "Summon Life Link Damage Modifier", "SummoningAbilityBonus", "Surface Clear Owner Time", "Surface Distance Evaluation", "SurfaceAbsorbBoostPerTilesCount", "SurfaceDurationAfterDecay", "SurfaceDurationBlessedCursed", "SurfaceDurationFireIgniteOverride", "SurfaceDurationFromCharacterBleeding", "SurfaceDurationFromHitFloorReaction", "TalentAttributePointsBonus", "TalentCivilAbilityPointsBonus", "TalentCombatAbilityPointsBonus", "TalentExecutionerActionPointBonus", "TalentHumanCriticalChance", "TalentHumanCriticalMultiplier", "TalentMemoryBonus", "TalentPerfectionistAccuracyBonus", "TalentPerfectionistCriticalChanceBonus", "TalentPointOffset", "TalentPointPerLevels", "TalentQuestRootedMemoryBonus", "TalentQuickStepPartialApBonus", "TalentRagerPercentage", "TalentResistDeathVitalityPercentage", "TalentResurrectExtraHealthPercent", "TalentSneakingAPCost", "TalentSneakingDamageBonus", "TalentViolentMagicCriticalChancePercent", "TalentWhatARushThreshold", "TargetCondition LowHP Percentage", "Telekinesis Range", "TeleportUnchainDistance", "ThirdPriceLeapGrowth", "ThirdPriceLeapLevel", "ThirdVitalityLeapGrowth", "ThirdVitalityLeapLevel", "TorturerDamageStatusTurnIncrease", "TraderDonationsRequiredAttitude", "TraderDroppedItemsCap", "TraderDroppedItemsPercentage", "UnstableDamagePercentage", "UnstableRadius", "VitalityBoostFromAttribute", "VitalityExponentialGrowth", "VitalityLinearGrowth", "VitalityStartingAmount", "VitalityToDamageRatio", "VitalityToDamageRatioGrowth", "WandUsesMax", "WeaponAccuracyPenaltyCap", "WeaponAccuracyPenaltyPerLevel", "WeaponWeightHeavy", "WeaponWeightLight", "WeaponWeightMedium", "WitsGrowthDamp"}
-    
+
     local extraData = Ext.Stats.GetStatsManager().ExtraData
     if opts.UseBaseExtraData then
         if not opts.GenerateExtraDataAsClass then
@@ -272,12 +274,12 @@ function Generator:GenerateExtraData(opts)
             for _,k in ipairs(baseKeys) do
                 self:EmitLine(string.format("\t[\"%s\"] = %s,", k, extraData[k]))
             end
-    
-    
+
+
             for _,k in ipairs(newKeys) do
                 self:EmitLine(string.format("\t[\"%s\"] = %s,", k, extraData[k]))
             end
-    
+
             self:EmitLine("}")
         else
             self:EmitComment("@class BaseExtraData")
@@ -412,7 +414,7 @@ function Generator:Build(opts)
     end
 
     self.Modules = modules
-    
+
     self:EmitExt("Client")
     self:EmitEmptyLine()
     self:EmitExt("Server")
@@ -484,7 +486,7 @@ function Generator:MakeTypeSignature(cls, type, forceExpand, nativeDefn)
         if _FuncData.Regular[clsName] and _FuncData.Regular[clsName][type.TypeName] then
             missingFuncData = _FuncData.Regular[clsName][type.TypeName]
         end
-        
+
         if _TableIsNullOrEmpty(type.Params) and missingFuncData.Params then
             for i,data in ipairs(missingFuncData.Params) do
                 table.insert(args, data.name .. ":" .. data.arg)
@@ -562,7 +564,7 @@ end
 
 function Generator:EmitEnumeration(type)
     local decl = "string"
-    
+
     for key,value in pairs(type.EnumValues) do
         decl = _format("%s|\"%s\"", decl, key)
     end
@@ -838,7 +840,7 @@ function Generator:EmitClass(type, moduleToClassField)
             table.insert(basicMethodSigs, fname)
         end
     end
-    
+
     for i,fname in ipairs(basicMethodSigs) do
         self:EmitMethod(type, fname, nativeDefn)
     end
@@ -846,7 +848,7 @@ function Generator:EmitClass(type, moduleToClassField)
     if #extendedMethodSigs > 0 then
         self:EmitLine('local ' .. name .. ' = {}')
         self:EmitLine("")
-        
+
         for i,fname in ipairs(extendedMethodSigs) do
             self:EmitMethod(type, fname, nativeDefn)
         end
@@ -978,7 +980,7 @@ function Generator:EmitModule(type, moduleToClassField)
             table.insert(basicFuncSigs, fname)
         end
     end
-    
+
     for i,fname in ipairs(basicFuncSigs) do
         self:EmitModuleFunction(type, fname, nativeDefn)
     end
@@ -989,7 +991,7 @@ function Generator:EmitModule(type, moduleToClassField)
         self:EmitLine(customText.After)
     end
     self:EmitEmptyLine()
-    
+
     for i,fname in ipairs(extendedFuncSigs) do
         --TODO Hacky output fixes [_CustomFunctionExtras(EmitModule)]. May not be required later on.
         local replaceText = nil
@@ -1072,7 +1074,7 @@ function Generator:GenerateEnums()
             end
 
             valueToName[i] = name
-            
+
             if string.find(name, "%s") or _restrictedKeys[name] then
                 self:EmitLine(string.format("\t[\"%s\"] = %s,", name, i))
             else
@@ -1182,4 +1184,4 @@ Ext.Types.GenerateIdeHelpers = function (outputPath, opts)
 end
 
 --TODO Ext.Visual.CreateOnCharacter is missing optional params
---TODO Ext_ServerServer.GetGameState() / Ext_ClientClient.GetGameState() ReturnValues[1] is nil 
+--TODO Ext_ServerServer.GetGameState() / Ext_ClientClient.GetGameState() ReturnValues[1] is nil

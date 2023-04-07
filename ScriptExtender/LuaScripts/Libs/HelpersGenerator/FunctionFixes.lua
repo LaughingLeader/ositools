@@ -1,3 +1,8 @@
+local _MultilineComment = function (...)
+	local lines = {...}
+	return "--- " .. table.concat(lines, "<br>")
+end
+
 local _MissingFuncData = {
 	Ext_ServerServer = {
 		GetGameState = {
@@ -633,6 +638,71 @@ local _MissingFuncData = {
 			}
 		}
 	},
+	Ext_ServerOsiris = {
+		IsCallable = {
+			Description = "--- Returns true if Osiris is loaded and ready."
+		},
+		NewQuery = {
+			Description = _MultilineComment("Register a new Osiris query.","See here: https://github.com/Norbyte/ositools/blob/master/Docs/LuaAPIDocs.md#queries",
+			"Unlike QRYs defined in Osiris code, Lua queries can return values just like the built-in queries.",
+			"Queries have two outcomes: they can either succeed or fail. A successful query returns a value for all of its out arguments; a failed query doesn't return any values.", "<hr>To indicate whether a query succeeded or failed, Lua uses the following mechanism:",
+			"<ul><li>For 0 out parameters (i.e. when the query returns no values) the function should return true when it succeeded and false when it failed.</li><li>For N (1 or more) out parameters the function should return N non-nil values when it succeeded and N nil values when it failed. It is not permitted to return a mixture of nil and non-nil values.</li></ul>"),
+			Params = {
+				{
+					name = "callback",
+					arg = "function",
+					description = "The function to invoke for the query.",
+				},
+				{
+					name = "name",
+					arg = "string",
+					description = "The osiris query name.",
+				},
+				{
+					name = "parameters",
+					arg = "string",
+					description = "The query parameters in a story header-like format, i.e. `[in](REAL)_A, [in](REAL)_B, [out](REAL)_Result`",
+				}
+			}
+		},
+		NewCall = {
+			Description = _MultilineComment("--- Register a new Osiris call.", "See here: https://github.com/Norbyte/ositools/blob/master/Docs/LuaAPIDocs.md#calls"),
+			Params = {
+				{
+					name = "callback",
+					arg = "function",
+					description = "The function to invoke for the call.",
+				},
+				{
+					name = "name",
+					arg = "string",
+					description = "The osiris call name. This is the function name used in Osiris scripts.",
+				},
+				{
+					name = "parameters",
+					arg = "string",
+					description = "The call parameters in a story header-like format, i.e. `(CHARACTERGUID)_Target, (REAL)_Multiplier`",
+				}
+			}
+		},
+		NewEvent = {
+			Description = _MultilineComment("Register a new Osiris event.",
+			"See here: https://github.com/Norbyte/ositools/blob/master/Docs/LuaAPIDocs.md#events",
+			"Custom events can be thrown by calling them like a function: `Osi.MyEvent(character.MyGuid, 'Test')`"),
+			Params = {
+				{
+					name = "name",
+					arg = "string",
+					description = "The osiris event name.",
+				},
+				{
+					name = "parameters",
+					arg = "string",
+					description = "The event parameters in a story header-like format, i.e. `(CHARACTERGUID)_Target, (STRING)_Name`",
+				}
+			}
+		}
+	}
 }
 _MissingFuncData.Ext_ClientClient = {GetGameState = _MissingFuncData.Ext_ServerServer.GetGameState}
 
@@ -688,6 +758,7 @@ local _MissingFuncFieldData = {
 		AddDamageType = "fun(damageType:FixedString, overwriteBuiltIn:boolean|nil):CustomDamageTypeDescriptor",
 		AddEnumerationValue = "fun(typeName:FixedString, enumLabel:FixedString):int32",
 		AddRequirement = "fun(id:FixedString, overwriteBuiltIn:boolean|nil):CustomRequirementDescriptor",
+		AddCondition = "fun(id:FixedString, overwriteBuiltIn:boolean|nil):CustomConditionDescriptor",
 	},
 	IEoCServerObject = {
 		GetStatusObjects = "fun(self:IEoCClientObject):EclStatus"
@@ -742,6 +813,12 @@ local _MissingFuncFieldData = {
 	},
 	StatsNamedElementManager_StatsLevelMap = {
 		GetByName = "fun(self:StatsNamedElementManager_StatsLevelMap, id:LevelMapName):StatsLevelMap"
+	},
+	CustomConditionCallbacks = {
+		EvaluateCallback = "CustomConditionEvaluateCallback|nil"
+	},
+	CustomRequirementCallbacks = {
+		EvaluateCallback = "CustomRequirementEvaluateCallback|nil"
 	}
 }
 
