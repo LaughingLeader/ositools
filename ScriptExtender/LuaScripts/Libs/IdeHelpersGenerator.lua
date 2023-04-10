@@ -66,6 +66,21 @@ local _TypeAliasRemove = {
     float = true,
 }
 
+---@param delimiter string
+---@param list table
+---@return string
+local function _JoinStrings(delimiter, list)
+	local str = ""
+    for i=1,#list do
+        if i > 1 then
+            str = _format("%s%s%s", str, delimiter, list[i])
+        else
+            str = list[i]
+        end
+    end
+	return str
+end
+
 --- @class GenerateIdeHelpersGenerator
 local Generator = {}
 
@@ -272,12 +287,12 @@ function Generator:GenerateExtraData(opts)
         if not opts.GenerateExtraDataAsClass then
             self:EmitLine("Ext.ExtraData = {")
             for _,k in ipairs(baseKeys) do
-                self:EmitLine(string.format("\t[\"%s\"] = %s,", k, extraData[k]))
+                self:EmitLine(_format("\t[\"%s\"] = %s,", k, extraData[k]))
             end
 
 
             for _,k in ipairs(newKeys) do
-                self:EmitLine(string.format("\t[\"%s\"] = %s,", k, extraData[k]))
+                self:EmitLine(_format("\t[\"%s\"] = %s,", k, extraData[k]))
             end
 
             self:EmitLine("}")
@@ -383,11 +398,11 @@ function Generator:Build(opts)
     self:EmitEmptyLine()
     self:EmitEmptyLine()
 
-    if opts.AddAliasEnums then
+    --[[ if opts.AddAliasEnums then
         for i,type in ipairs(self.Enumerations) do
             self:EmitEnumeration(type)
         end
-    end
+    end ]]
 
     self:EmitEmptyLine()
     self:EmitEmptyLine()
@@ -415,11 +430,11 @@ function Generator:Build(opts)
 
     self.Modules = modules
 
-    self:EmitExt("Client")
+    self:EmitExt("Client", false, opts)
     self:EmitEmptyLine()
-    self:EmitExt("Server")
+    self:EmitExt("Server", false, opts)
     self:EmitEmptyLine()
-    self:EmitExt(nil, true)
+    self:EmitExt(nil, true, opts)
     if opts.AddOsiris then
         self:EmitLine(_OsiLines)
     end
@@ -1045,7 +1060,8 @@ local _restrictedKeys = {
     ["end"] = true,
 }
 
-function Generator:GenerateEnums()
+--- @param opts GenerateIdeHelpersOptions
+function Generator:GenerateEnums(opts)
     self:EmitLine("--#region Generated Enums")
     self:EmitEmptyLine()
     self:EmitComment("@class Ext_Enums")
@@ -1059,43 +1075,70 @@ function Generator:GenerateEnums()
 
     for _,enumName in ipairs(enumNames) do
         self:EmitEmptyLine()
-        self:EmitComment("@enum " .. enumName)
-        self:EmitLine("Ext_Enums." .. enumName .. " = {")
 
         local enum = Ext.Enums[enumName]
 
-        local valueToName = {}
+        local names = {}
+        local entries = {}
+        local len = 0
 
-        for i,label in ipairs(enum) do
-            local name = tostring(label)
-            local _,_,actualName = string.find(name, _enumNamePattern)
-            if actualName then
-                name = actualName
-            end
+        for k,v in pairs(enum) do
+            if type(k) == "number" then
+                local name = tostring(v)
+                local _,_,actualName = string.find(name, _enumNamePattern)
+                if actualName then
+                    name = actualName
+                end
 
-            valueToName[i] = name
-
-            if string.find(name, "%s") or _restrictedKeys[name] then
-                self:EmitLine(string.format("\t[\"%s\"] = %s,", name, i))
-            else
-                self:EmitLine(string.format("\t%s = %s,", name, i))
+                len = len + 1
+                entries[len] = {Value=k,Name=name}
+                names[len] = '"' .. name .. '"'
             end
         end
 
-        for i,v in ipairs(valueToName) do
-            self:EmitLine(string.format("\t[%s] = \"%s\",", i, v))
+        if opts.AddAliasEnums then
+            self:EmitComment(_format("@enum %sEnum", enumName))
+        else
+            self:EmitComment(_format("@enum %s", enumName))
+        end
+        self:EmitLine("Ext_Enums." .. enumName .. " = {")
+
+        table.sort(entries, function(a,b) return a.Value < b.Value end)
+
+        for i=1,len do
+            local entry = entries[i]
+            local name = entry.Name
+            if string.find(name, "%s") or _restrictedKeys[name] then
+                self:EmitLine(_format("\t[\"%s\"] = %s,", name, entry.Value))
+            else
+                self:EmitLine(_format("\t%s = %s,", name, entry.Value))
+            end
+        end
+
+        for i=1,len do
+            local v = entries[i]
+            self:EmitLine(_format("\t[%s] = \"%s\",", v.Value, v.Name))
         end
 
         self:EmitLine("}")
+
+        if opts.AddAliasEnums then
+            table.sort(names)
+            self:EmitEmptyLine()
+            self:EmitComment(_format("@alias %s %sEnum|%s", enumName, enumName, _JoinStrings("|", names)))
+        end
     end
     self:EmitEmptyLine()
     self:EmitLine("--#endregion")
     self:EmitEmptyLine()
 end
 
-function Generator:EmitExt(role, declareGlobal)
+--- @param role? string
+--- @param declareGlobal? boolean
+--- @param opts GenerateIdeHelpersOptions
+function Generator:EmitExt(role, declareGlobal, opts)
     if declareGlobal then
-        self:GenerateEnums()
+        self:GenerateEnums(opts)
     end
 
     self:EmitComment("@class Ext" .. (role or ""))
@@ -1184,4 +1227,3 @@ Ext.Types.GenerateIdeHelpers = function (outputPath, opts)
 end
 
 --TODO Ext.Visual.CreateOnCharacter is missing optional params
---TODO Ext_ServerServer.GetGameState() / Ext_ClientClient.GetGameState() ReturnValues[1] is nil
