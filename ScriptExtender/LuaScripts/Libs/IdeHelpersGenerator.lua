@@ -120,7 +120,7 @@ function OsiDatabase:Get(...) end
 --- @vararg OsirisValue|nil
 function OsiDatabase:Delete(...) end
 
---- @alias OsiFunction fun(...:OsirisValue):OsirisValue|nil
+--- @alias OsiFunction (fun(...:OsirisValue):OsirisValue|nil)
 --- @alias OsiDynamic table<string, OsiFunction|OsiDatabase>
 
 --- @class OsiCommonDatabases
