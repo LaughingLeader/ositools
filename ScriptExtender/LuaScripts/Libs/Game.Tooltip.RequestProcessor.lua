@@ -307,12 +307,12 @@ RequestProcessor.CallbackHandler[TooltipCalls.Item] = function (request, ui, uiT
 		end
 	elseif uiType == _UITYPE.containerInventory.Default or uiType == _UITYPE.containerInventory.Pickpocket then
 		local doubleHandle = params[1]
-		if not _IsNaN(doubleHandle) and doubleHandle > 0 then
+		if doubleHandle ~= nil and not _IsNaN(doubleHandle) and doubleHandle > 0 then
 			request.ObjectHandleDouble = doubleHandle
 		end
 	else
 		local id = params[1]
-		if _IsNaN(id) then
+		if not id or _IsNaN(id) then
 			_PrintWarning(string.format("[Game.Tooltip.RequestProcessor:%s] Item handle (%s) is nil? UI(%s)", event, id, uiType))
 			return request
 		end
@@ -638,7 +638,7 @@ function RequestProcessor.OnExamineTooltip(e, ui, event, typeIndex, id, ...)
 		end
 	elseif typeIndex == 7 then
 		request.Type = "Status"
-		if not _IsNaN(id) then
+		if id and not _IsNaN(id) then
 			local statusHandle = _DoubleToHandle(id)
 			if _IsValidHandle(statusHandle) then
 				request.StatusHandleDouble = id
@@ -692,7 +692,7 @@ function RequestProcessor.OnControllerExamineTooltip(e, ui, event, id, objectHan
 	---@type EclItem|EclCharacter|nil
 	local object = nil
 
-	if not _IsNaN(objectHandle) then
+	if objectHandle and not _IsNaN(objectHandle) then
 		object = _GetObjectFromDouble(objectHandle)
 	end
 
@@ -722,7 +722,7 @@ function RequestProcessor.OnControllerExamineTooltip(e, ui, event, id, objectHan
 
 	if event == "selectStatus" then
 		request.Type = "Status"
-		if not _IsNaN(id) then
+		if id and not _IsNaN(id) then
 			local statusHandle = _DoubleToHandle(id)
 			if _IsValidHandle(statusHandle) then
 				request.StatusHandleDouble = id
@@ -791,7 +791,7 @@ function RequestProcessor.OnGMStatusTooltip(e, ui, event, id, ...)
 	end
 
 	request.Type = "Status"
-	if not _IsNaN(id) then
+	if id and not _IsNaN(id) then
 		local statusHandle = _DoubleToHandle(id)
 		if _IsValidHandle(statusHandle) then
 			request.StatusHandleDouble = id
