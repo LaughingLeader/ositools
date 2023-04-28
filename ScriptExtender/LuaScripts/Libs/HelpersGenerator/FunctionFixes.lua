@@ -755,10 +755,11 @@ local _MissingFuncFieldData = {
 	},
 	Ext_Stats = {
 		AddAttribute = "fun(modifierList:ModifierListType, attributeName:FixedString, valueType:ModifierValueType):boolean",
-		AddDamageType = "fun(damageType:FixedString, overwriteBuiltIn:boolean|nil):CustomDamageTypeDescriptor",
-		AddEnumerationValue = "fun(typeName:FixedString, enumLabel:FixedString):int32",
-		AddRequirement = "fun(id:FixedString, overwriteBuiltIn:boolean|nil):CustomRequirementDescriptor",
-		AddCondition = "fun(id:FixedString, overwriteBuiltIn:boolean|nil):CustomConditionDescriptor",
+		AddDamageType = "fun(damageType:FixedString, overwriteBuiltin:boolean|nil):CustomDamageTypeDescriptor",
+		AddEnumerationValue = "fun(valueType:ModifierValueType, enumLabel:FixedString):int32",
+		AddRequirement = "fun(id:FixedString, overwriteBuiltin:boolean|nil):CustomRequirementDescriptor",
+		AddCondition = "fun(id:FixedString, overwriteBuiltin:boolean|nil):CustomConditionDescriptor",
+		GetItemBaseStats = "fun(id:FixedString, level:int32):CDivinityStatsItem",
 	},
 	IEoCServerObject = {
 		GetStatusObjects = "fun(self:IEoCClientObject):EclStatus"
