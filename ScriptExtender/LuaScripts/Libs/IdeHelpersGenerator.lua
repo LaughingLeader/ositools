@@ -1068,6 +1068,7 @@ local function GenerateSubscriptionEvents(self)
 end
 
 local _enumNamePattern = ".-%((.+)%).-"
+local _restrictPattern = "[^%a%d_]" -- Allow only alphanumeric characters or underscores
 local _restrictedKeys = {
     ["end"] = true,
 }
@@ -1120,7 +1121,7 @@ function Generator:GenerateEnums(opts)
         for i=1,len do
             local entry = entries[i]
             local name = entry.Name
-            if string.find(name, "%s") or _restrictedKeys[name] then
+            if _restrictedKeys[name] or string.find(name, _restrictPattern) then
                 self:EmitLine(_format("\t[\"%s\"] = %s,", name, entry.Value))
             else
                 self:EmitLine(_format("\t%s = %s,", name, entry.Value))
