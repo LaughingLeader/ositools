@@ -4,6 +4,8 @@ local pairs = pairs
 local Ext = Ext
 local type = type
 
+---@alias GameMathHelperSkillData StatEntrySkillData|StatsSkillPrototype
+
 if Game == nil then Game = {} end
 
 Game.Math = {}
@@ -41,7 +43,7 @@ function Game.Math.ScaledDamageFromPrimaryAttribute(primaryAttr)
 	return (primaryAttr - Ext.ExtraData.AttributeBaseValue) * Ext.ExtraData.DamageBoostFromAttribute
 end
 
---- @param skill StatEntrySkillData
+--- @param skill GameMathHelperSkillData
 --- @param character CDivinityStatsCharacter
 function Game.Math.GetPrimaryAttributeAmount(skill, character)
 	if skill.UseWeaponDamage == "Yes" and character.MainWeapon ~= nil then
@@ -64,7 +66,7 @@ function Game.Math.GetPrimaryAttributeAmount(skill, character)
 	end
 end
 
---- @param skill StatEntrySkillData
+--- @param skill GameMathHelperSkillData
 --- @param attacker CDivinityStatsCharacter
 function Game.Math.GetSkillAttributeDamageScale(skill, attacker)
 	if attacker == nil or skill.UseWeaponDamage == "Yes" or skill.Ability == "None" then
@@ -75,7 +77,7 @@ function Game.Math.GetSkillAttributeDamageScale(skill, attacker)
 	end
 end
 
---- @param skill StatEntrySkillData
+--- @param skill GameMathHelperSkillData
 --- @param stealthed boolean
 --- @param attackerPos number[]
 --- @param targetPos number[]
@@ -553,7 +555,7 @@ function Game.Math.CalculateWeaponDamage(attacker, weapon, noRandomization)
 	return damageList
 end
 
---- @param skill StatEntrySkillData
+--- @param skill GameMathHelperSkillData
 --- @param attacker CDivinityStatsCharacter
 --- @param isFromItem boolean
 --- @param stealthed boolean
@@ -568,15 +570,14 @@ function Game.Math.GetSkillDamage(skill, attacker, isFromItem, stealthed, attack
 		level = attacker.Level
 	end
 
+	---@cast attacker CDivinityStatsCharacter
+
 	local damageMultiplier = skill['Damage Multiplier'] * 0.01
 	local damageMultipliers = Game.Math.GetDamageMultipliers(skill, stealthed, attackerPos, targetPos)
 	local skillDamageType = nil
 
-	if level == 0 then
-		level = skill.OverrideSkillLevel
-		if level == 0 then
-			level = skill.Level
-		end
+	if level <= 0 and skill.OverrideSkillLevel == "Yes" and skill.Level > 0 then
+		level = skill.Level
 	end
 
 	local damageList = Ext.Stats.NewDamageList()
@@ -586,6 +587,8 @@ function Game.Math.GetSkillDamage(skill, attacker, isFromItem, stealthed, attack
 	end
 
 	if skill.UseWeaponDamage == "Yes" then
+
+		---@type DamageType|nil
 		local damageType = skill.DamageType
 		if damageType == "None" or damageType == "Sentinel" then
 			damageType = nil
@@ -1216,7 +1219,7 @@ function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, 
 end
 
 --- @param character CDivinityStatsCharacter
---- @param skill StatEntrySkillData
+--- @param skill GameMathHelperSkillData
 --- @param mainWeapon CDivinityStatsItem|nil  Optional mainhand weapon to use in place of the character's.
 --- @param offHandWeapon CDivinityStatsItem|nil   Optional offhand weapon to use in place of the character's.
 function Game.Math.GetSkillDamageRange(character, skill, mainWeapon, offHandWeapon)
@@ -1262,8 +1265,8 @@ function Game.Math.GetSkillDamageRange(character, skill, mainWeapon, offHandWeap
 			local min, max = 0, 0
 			local boost = Game.Math.GetDamageBoostByType(character, damageType)
 			for _, range in pairs(mainDamageRange) do
-				min = min + range.Min + math.ceil(range.Min * Game.Math.GetDamageBoostByType(character, damageType))
-				max = max + range.Max + math.ceil(range.Min * Game.Math.GetDamageBoostByType(character, damageType))
+				min = min + range.Min + math.ceil(range.Min * boost)
+				max = max + range.Max + math.ceil(range.Min * boost)
 			end
 
 			mainDamageRange = {}
@@ -1477,7 +1480,7 @@ local ElementalAffinityAiFlags = {
 	Sulfurology = { "Sulfurium" }
 }
 
---- @param skill StatEntrySkillData
+--- @param skill GameMathHelperSkillData
 --- @param character CDivinityStatsCharacter
 --- @param grid EocAiGrid
 --- @param position number[]
