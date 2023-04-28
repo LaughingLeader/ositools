@@ -116,6 +116,8 @@ ModuleUUID = "UUID"
 PersistentVars = {}
 
 --- @alias OsirisValue number|string
+--- @alias OsiFunction (fun(...:OsirisValue):OsirisValue|nil)
+--- @alias OsirisEventType string|"before"|"after"|"beforeDelete"|"afterDelete"
 
 --- Using a DB like a function will allow inserting new values into the database (ex. `Osi.DB_IsPlayer("02a77f1f-872b-49ca-91ab-32098c443beb")`
 --- @overload fun(...:OsirisValue|nil)
@@ -135,22 +137,28 @@ function OsiDatabase:Get(...) end
 --- @vararg OsirisValue|nil
 function OsiDatabase:Delete(...) end
 
---- @alias OsiFunction (fun(...:OsirisValue):OsirisValue|nil)
---- @alias OsiDynamic table<string, OsiFunction|OsiDatabase>
-
---- @class OsiCommonDatabases
---- @field DB_IsPlayer OsiDatabase|fun(Guid:string) All player characters
---- @field DB_Origins OsiDatabase|fun(Guid:string) All origin characters
---- @field DB_Avatars OsiDatabase|fun(Guid:string) All player characters that were created in character creation, or that have an `AVATAR` tag
---- @field DB_CombatObjects OsiDatabase|fun(Guid:string, combatID:integer) All objects in combat
---- @field DB_CombatCharacters OsiDatabase|fun(Guid:string, combatID:integer) All characters in combat
---- @field DB_Dialogs OsiDatabase|fun(Guid:string, dialog:string)|fun(GUID1:string, GUID2:string, dialog:string)|fun(GUID1:string, GUID2:string, GUID3:string, dialog:string)|fun(GUID1:string, GUID2:string, GUID3:string, GUID4:string, dialog:string) All registered dialogs for objects, the most common being the version with a single character
-
 --- The Osi table contains databases as well as calls, queries, events, and custom PROC / QRY defintions, as long as they are used in a script.
---- @type OsiCommonDatabases|OsiDynamic
-Osi = {}
+Osi = {
+	---All player characters
+	---@type OsiDatabase|fun(guid:Guid)
+	DB_IsPlayer = {},
+	---All origin characters
+	---@type OsiDatabase|fun(guid:Guid)
+	DB_Origins = {},
+	---All player characters that were created in character creation, or that have an `AVATAR` tag
+	---@type OsiDatabase|fun(guid:Guid)
+	DB_Avatars = {},
+	---All objects in combat
+	---@type OsiDatabase|fun(guid:Guid, combatID:integer)
+	DB_CombatObjects = {},
+	---All characters in combat
+	---@type OsiDatabase|fun(guid:Guid, combatID:integer)
+	DB_CombatCharacters = {},
+	---All registered dialogs for objects, the most common being the version with a single character
+	---@type OsiDatabase|fun(guid:Guid, dialog:string)|fun(GUID1:Guid, GUID2:Guid, dialog:string)|fun(GUID1:Guid, GUID2:Guid, GUID3:Guid, dialog:string)|fun(GUID1:Guid, GUID2:Guid, GUID3:Guid, GUID4:Guid, dialog:string)
+	DB_Dialogs = {},
+}
 
---- @alias OsirisEventType string|"before"|"after"|"beforeDelete"|"afterDelete"
 --- @alias i16vec2 int16[]
 
 --- @alias SkillAbility "None"|"Warrior"|"Ranger"|"Rogue"|"Source"|"Fire"|"Water"|"Air"|"Earth"|"Death"|"Summoning"|"Polymorph"
