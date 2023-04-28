@@ -754,7 +754,7 @@ local _MissingFuncFieldData = {
 		Update = "fun(tbl:StatsItemColorDefinition)",
 	},
 	Ext_Stats = {
-		AddAttribute = "fun(modifierList:FixedString, modifierName:FixedString, typeName:FixedString):boolean",
+		AddAttribute = "fun(modifierList:ModifierListType, attributeName:FixedString, valueType:ModifierValueType):boolean",
 		AddDamageType = "fun(damageType:FixedString, overwriteBuiltIn:boolean|nil):CustomDamageTypeDescriptor",
 		AddEnumerationValue = "fun(typeName:FixedString, enumLabel:FixedString):int32",
 		AddRequirement = "fun(id:FixedString, overwriteBuiltIn:boolean|nil):CustomRequirementDescriptor",
