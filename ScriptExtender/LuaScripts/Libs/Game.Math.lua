@@ -1122,9 +1122,10 @@ function Game.Math.CanBackstab(target, attacker)
 	return relAngle >= 150 and relAngle <= 210
 end
 
+--- Throws `Ext.Events.GetHitChance`, so mods can influence the hit chance.   
 --- @param attacker CDivinityStatsCharacter
 --- @param target CDivinityStatsCharacter
-local function CCH_CalculateHitChance(attacker, target)
+function Game.Math.Utils.CalculateHitChance(attacker, target)
 	local evt = {
 		Name = "GetHitChance",
 		Stopped = false,
@@ -1159,7 +1160,7 @@ end
 function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, hitType, noHitRoll, forceReduceDurability, hit, alwaysBackstab, highGroundFlag, criticalRoll)
 	--Extender logic:
 	--Skip doing anything if a mod has modified this hit already.
-	local hitBlocked = Game.Math.Utils.HitFailed(hit)
+	local hitFailed = Game.Math.Utils.HitFailed(hit)
 
 	local damageMultiplier = 1.0
 	local criticalMultiplier = 0.0
@@ -1167,8 +1168,14 @@ function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, 
 	local damageList = Ext.Stats.NewDamageList()
 	damageList:CopyFrom(preDamageList)
 
+	--Extender logic:
+	--Safeguard against infinite reflection damage via Shackles of Pain + Retribution, or a mod setting this to false.
+    if hitType == "Reflected" then
+        hit.Reflection = true
+    end
+
 	if attacker == nil then
-		if not hitBlocked then
+		if not hitFailed then
 			Game.Math.DoHit(hit, damageList, statusBonusDmgTypes, hitType, target, attacker, damageMultiplier)
 		end
 		return hit
@@ -1177,7 +1184,7 @@ function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, 
 	damageMultiplier = 1.0 + Game.Math.GetAttackerDamageMultiplier(attacker, target, highGroundFlag)
 	if hitType == "Magic" or hitType == "Surface" or hitType == "DoT" or hitType == "Reflected" then
 		damageMultiplier = Game.Math.ConditionalApplyCriticalHitMultiplier(hit, target, attacker, hitType, criticalRoll, damageMultiplier, criticalMultiplier)
-		if hitBlocked then
+		if hitFailed then
 			goto postHitBlocked
 		end
 		Game.Math.DoHit(hit, damageList, statusBonusDmgTypes, hitType, target, attacker, damageMultiplier)
@@ -1188,7 +1195,12 @@ function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, 
 		hit.Backstab = true
 	end
 
-	if hitType == "Melee" then
+	--[[
+	Extender logic:
+	This is an oversight fix. Many melee skills have UseCharacterStats set to "No", so the hitType ends up being
+	"WeaponDamage" instead of Melee, and it won't normally apply Sadist bonuses.
+	]]
+	if hitType == "Melee" or (hitType == "WeaponDamage" and not Game.Math.IsRangedWeapon(weapon) and hit.HitWithWeapon) then
 		if Game.Math.IsInFlankingPosition(target, attacker) then
 			hit.Flanking = true
 		end
@@ -1211,8 +1223,9 @@ function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, 
 		damageMultiplier = damageMultiplier + 0.1
 	end
 
-	if not hitBlocked and not noHitRoll then
-		local hitChance = CCH_CalculateHitChance(attacker, target)
+	if not hitFailed and not noHitRoll then
+		-- Extender logic: Let mods interact with the hit chance via `Ext.Events.GetHitChance`.
+		local hitChance = Game.Math.Utils.CalculateHitChance(attacker, target)
 		local hitRoll = math.random(0, 99)
 		if hitRoll >= hitChance then
 			if target.TALENT_RangerLoreEvasionBonus and hitRoll < hitChance + 10 then
@@ -1220,12 +1233,12 @@ function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, 
 			else
 				hit.Missed = true
 			end
-			hitBlocked = true
+			hitFailed = true
 		else
 			local blockChance = target.BlockChance
 			if not hit.Backstab and blockChance > 0 and math.random(0, 99) < blockChance then
 				hit.Blocked = true
-				hitBlocked = true
+				hitFailed = true
 			end
 		end
 	end
@@ -1237,7 +1250,7 @@ function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, 
 		Game.Math.ConditionalDamageItemDurability(attacker, weapon)
 	end
 
-	if not hitBlocked then
+	if not hitFailed then
 		damageMultiplier = Game.Math.ConditionalApplyCriticalHitMultiplier(hit, target, attacker, hitType, criticalRoll, damageMultiplier, criticalMultiplier)
 		Game.Math.DoHit(hit, damageList, statusBonusDmgTypes, hitType, target, attacker, damageMultiplier)
 	end
