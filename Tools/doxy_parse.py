@@ -1,7 +1,7 @@
 from xml.etree import ElementTree
 from os import listdir
 from os.path import isfile, join
-import json
+import json, sys
 
 class DescriptionMetadata:
     text = ''
@@ -402,5 +402,5 @@ class DoxyMetadata:
 
 
 meta = DoxyMetadata()
-meta.parse_doxygen_dir('ScriptExtenderTypeGen/Doxygen/xml')
-meta.lua_export('ScriptExtender/LuaScripts/Libs/IdeHelpersNativeData.lua')
+meta.parse_doxygen_dir(sys.argv[1])
+meta.lua_export(sys.argv[2])

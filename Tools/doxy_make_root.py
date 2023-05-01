@@ -1,4 +1,4 @@
-import pathlib, shutil, re
+import pathlib, shutil, re, sys
 
 def doxy_should_ignore(path, files):
     ignored = []
@@ -34,7 +34,7 @@ def rewrite_includes(root: pathlib.Path, depth: int, dir: pathlib.Path):
         if path.is_dir():
             rewrite_includes(root, depth+1, path)
 
-src = pathlib.Path(__file__).parent.resolve().joinpath('ScriptExtender')
-dst_root = pathlib.Path(__file__).parent.resolve().joinpath('ScriptExtenderTypeGen')
+src = pathlib.Path(sys.argv[1])
+dst_root = pathlib.Path(sys.argv[2])
 make_doxy_root(src, dst_root)
 rewrite_includes(dst_root, 0, dst_root)
