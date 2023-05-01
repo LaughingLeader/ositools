@@ -11,7 +11,7 @@ cd %~dp0
 EXIT /B 0
 
 :GenProto
-cd %~1
+pushd %~1
 %CMD% --cpp_out=. %~2
 popd
 EXIT /B 0
