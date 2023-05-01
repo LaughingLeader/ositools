@@ -8,7 +8,9 @@ local type = type
 
 if Game == nil then Game = {} end
 
-Game.Math = {}
+Game.Math = {
+	Utils = {}
+}
 
 Game.Math.DamageTypeToDeathTypeMap = {
 	Physical = "Physical",
@@ -937,6 +939,19 @@ function Game.Math.ComputeMagicArmorDamage(damageList, magicArmor)
 	return math.min(magicArmor, damage)
 end
 
+--- Returns true if the hit is Missed/Dodged/Blocked, or Invulnerable (with specific conditions).
+--- @param hit StatsHitDamageInfo
+--- @return boolean
+function Game.Math.Utils.HitFailed(hit)
+	if hit.Missed or hit.Dodged or hit.Blocked then
+		return true
+	elseif not hit.Hit and hit.Invulnerable then
+		---hit.Invulnerable requires Missed/Dodged/Blocked/Hit to be false.
+		return true
+	end
+	return false
+end
+
 --- @param hit StatsHitDamageInfo
 --- @param damageList StatsDamagePairList
 --- @param statusBonusDmgTypes StatsDamagePairList
@@ -945,7 +960,10 @@ end
 --- @param attacker CDivinityStatsCharacter
 --- @param damageMultiplier number
 function Game.Math.DoHit(hit, damageList, statusBonusDmgTypes, hitType, target, attacker, damageMultiplier)
-	hit.Hit = true
+	--Extender logic:
+	--Tweak to support mods modifying these flags before CCH.
+	--The regular engine code just sets hit.Hit = true, which will cause Missed/etc hits to still hit.
+	hit.Hit = not Game.Math.Utils.HitFailed(hit)
 	damageList:AggregateSameTypeDamages()
 	damageList:Multiply(damageMultiplier)
 
@@ -1139,6 +1157,10 @@ end
 --- @param highGroundFlag string HighGround enumeration
 --- @param criticalRoll string CriticalRoll enumeration
 function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, hitType, noHitRoll, forceReduceDurability, hit, alwaysBackstab, highGroundFlag, criticalRoll)
+	--Extender logic:
+	--Skip doing anything if a mod has modified this hit already.
+	local hitBlocked = Game.Math.Utils.HitFailed(hit)
+
 	local damageMultiplier = 1.0
 	local criticalMultiplier = 0.0
 	local statusBonusDmgTypes = {}
@@ -1146,13 +1168,18 @@ function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, 
 	damageList:CopyFrom(preDamageList)
 
 	if attacker == nil then
-		Game.Math.DoHit(hit, damageList, statusBonusDmgTypes, hitType, target, attacker, damageMultiplier)
+		if not hitBlocked then
+			Game.Math.DoHit(hit, damageList, statusBonusDmgTypes, hitType, target, attacker, damageMultiplier)
+		end
 		return hit
 	end
 
 	damageMultiplier = 1.0 + Game.Math.GetAttackerDamageMultiplier(attacker, target, highGroundFlag)
 	if hitType == "Magic" or hitType == "Surface" or hitType == "DoT" or hitType == "Reflected" then
 		damageMultiplier = Game.Math.ConditionalApplyCriticalHitMultiplier(hit, target, attacker, hitType, criticalRoll, damageMultiplier, criticalMultiplier)
+		if hitBlocked then
+			goto postHitBlocked
+		end
 		Game.Math.DoHit(hit, damageList, statusBonusDmgTypes, hitType, target, attacker, damageMultiplier)
 		return hit
 	end
@@ -1184,9 +1211,7 @@ function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, 
 		damageMultiplier = damageMultiplier + 0.1
 	end
 
-	local hitBlocked = false
-
-	if not noHitRoll then
+	if not hitBlocked and not noHitRoll then
 		local hitChance = CCH_CalculateHitChance(attacker, target)
 		local hitRoll = math.random(0, 99)
 		if hitRoll >= hitChance then
@@ -1204,6 +1229,8 @@ function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, 
 			end
 		end
 	end
+
+	::postHitBlocked::
 
 	if weapon ~= nil and weapon.Name ~= "DefaultWeapon" and hitType ~= "Magic"
 	and forceReduceDurability and not hit.Missed and not hit.Dodged then
