@@ -1258,6 +1258,18 @@ function Game.Math.ComputeCharacterHit(target, attacker, weapon, preDamageList, 
 	return hit
 end
 
+--- A wrapper around `Game.Math.ComputeCharacterHit`, passing the `Ext.Events.ComputeCharacterHit` args in the correct order.  
+--- This sets `e.Handled = true`, which is required for the hit changes to take effect.  
+--- @see Game.Math.ComputeCharacterHit
+--- @see Ext.Events.ComputeCharacterHit
+--- @param e EsvLuaComputeCharacterHitEvent
+--- @return StatsHitDamageInfo
+function Game.Math.Utils.OnComputeCharacterHitEvent(e)
+	local hit = Game.Math.ComputeCharacterHit(e.Target, e.Attacker, e.Weapon, e.DamageList, e.HitType, e.NoHitRoll, e.ForceReduceDurability, e.Hit, e.AlwaysBackstab, e.HighGround, e.CriticalRoll)
+	e.Handled = true
+	return hit
+end
+
 --- @param character CDivinityStatsCharacter
 --- @param skill GameMathHelperSkillData
 --- @param mainWeapon CDivinityStatsItem|nil  Optional mainhand weapon to use in place of the character's.
