@@ -23,6 +23,12 @@ namespace dse
 		"Load"
 	};
 
+#if defined(OSI_EOCAPP)
+	bool const closeGameOnVersionError = true;
+#else
+	bool const closeGameOnVersionError = false;
+#endif
+
 	static_assert(std::size(sContextNames) == (unsigned)ExtensionStateContext::Max + 1);
 
 	char const* ContextToString(ExtensionStateContext ctx)
@@ -124,7 +130,7 @@ namespace dse
 			std::wstringstream msg;
 			msg << L"Module \"" << HighestVersionMod->Info.Name << "\" requires extension version "
 				<< MergedConfig.MinimumVersion << "; current version is v" << CurrentVersion;
-			gExtender->GetLibraryManager().ShowStartupError(msg.str().c_str(), false, true);
+			gExtender->GetLibraryManager().ShowStartupError(msg.str().c_str(), false, closeGameOnVersionError);
 		}
 	}
 
