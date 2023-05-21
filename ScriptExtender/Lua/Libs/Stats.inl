@@ -1281,7 +1281,14 @@ void AddVoiceMetaData(FixedString const& speakerGuid, FixedString const& transla
 	voiceMeta->Source.Name = path;
 }
 
-bool AddAttribute(FixedString const& modifierList, FixedString const& modifierName, FixedString const& typeName)
+/// <summary>
+/// Adds a new attribute.
+/// </summary>
+/// <param name="modifierList" type="ModifierListType">The modifier list ID.</param>
+/// <param name="attributeName">The attribute ID.</param>
+/// <param name="valueType" type="ModifierValueType">The attribute value type.</param>
+/// <returns name="success">boolean</returns>
+bool AddAttribute(FixedString const& modifierList, FixedString const& attributeName, FixedString const& valueType)
 {
 	if (GetStaticSymbols().GetStats()->Objects.Elements.size() > 0) {
 		OsiError("It is not safe to modify stats types after stats data files were loaded!");
@@ -1295,39 +1302,45 @@ bool AddAttribute(FixedString const& modifierList, FixedString const& modifierNa
 		return false;
 	}
 	
-	if (modList->Attributes.Find(modifierName)) {
-		OsiError("Modifier list already has an attribute named '" << modifierName << "'");
+	if (modList->Attributes.Find(attributeName)) {
+		OsiError("Modifier list already has an attribute named '" << attributeName << "'");
 		return false;
 	}
 
-	auto valueListIdx = GetStaticSymbols().GetStats()->ModifierValueLists.FindIndex(typeName);
+	auto valueListIdx = GetStaticSymbols().GetStats()->ModifierValueLists.FindIndex(valueType);
 	if (!valueListIdx) {
-		OsiError("No such stats value type: " << typeName);
+		OsiError("No such stats value type: " << valueType);
 		return false;
 	}
 
 	auto modifier = GameAlloc<Modifier>();
 	modifier->ValueListIndex = *valueListIdx;
-	modifier->Name = modifierName;
-	modList->Attributes.Add(modifierName, modifier);
+	modifier->Name = attributeName;
+	modList->Attributes.Add(attributeName, modifier);
 	return true;
 }
 
-std::optional<int32_t> AddEnumerationValue(FixedString const& typeName, FixedString const& enumLabel)
+/// <summary>
+/// Adds a new attribute.
+/// </summary>
+/// <param name="valueType" type="ModifierValueType">The enum value type.</param>
+/// <param name="enumLabel" type="FixedString">The enum value ID.</param>
+/// <returns name="value">integer</returns>
+std::optional<int32_t> AddEnumerationValue(FixedString const& valueType, FixedString const& enumLabel)
 {
-	auto valueList = GetStaticSymbols().GetStats()->ModifierValueLists.Find(typeName);
+	auto valueList = GetStaticSymbols().GetStats()->ModifierValueLists.Find(valueType);
 	if (!valueList) {
-		OsiError("No such stats value type: " << typeName);
+		OsiError("No such stats value type: " << valueType);
 		return {};
 	}
 
 	if (valueList->GetPropertyType() != AttributeType::Enumeration) {
-		OsiError("Stats value type is not an enumeration: " << typeName);
+		OsiError("Stats value type is not an enumeration: " << valueType);
 		return {};
 	}
 
 	if (valueList->Values.find(enumLabel) != valueList->Values.end()) {
-		OsiError("Stats value type already has a value named '" << typeName << "'");
+		OsiError("Stats value type already has a value named '" << valueType << "'");
 		return {};
 	}
 
@@ -1336,6 +1349,12 @@ std::optional<int32_t> AddEnumerationValue(FixedString const& typeName, FixedStr
 	return value;
 }
 
+/// <summary>
+/// Adds a new damage type, or overrides an existing type.
+/// </summary>
+/// <param name="typeName" type="FixedString">The damage type ID.</param>
+/// <param name="overwrite">Only set this to true if this is overriding a builtin damage type.</param>
+/// <returns>CustomDamageTypeDescriptor</returns>
 CustomDamageTypeDescriptor* AddDamageType(FixedString const& typeName, std::optional<bool> overwrite)
 {
 	CustomDamageTypeDescriptor* cdt;
@@ -1352,6 +1371,12 @@ CustomDamageTypeDescriptor* AddDamageType(FixedString const& typeName, std::opti
 	return cdt;
 }
 
+/// <summary>
+/// Adds a new stat requirement, or overrides an existing requirement.
+/// </summary>
+/// <param name="requirementName" type="FixedString">The requirement ID.</param>
+/// <param name="overwrite">Only set this to true if this is overriding a builtin requirement.</param>
+/// <returns>CustomRequirementDescriptor</returns>
 CustomRequirementDescriptor* AddRequirement(FixedString const& requirementName, std::optional<bool> overwrite)
 {
 	CustomRequirementDescriptor* descriptor;
@@ -1373,6 +1398,12 @@ CustomRequirementContext* GetRequirementContext()
 	return &gExtender->GetCurrentExtensionState()->GetCustomRequirementContext();
 }
 
+/// <summary>
+/// Adds a new stat requirement, or overrides an existing requirement. Returns the CustomRequirementDescriptor.
+/// </summary>
+/// <param name="requirementName">The requirement ID.</param>
+/// <param name="overwrite">Only set this to true if this is overriding a builtin requirement.</param>
+/// <returns>CustomRequirementDescriptor</returns>
 std::optional<bool> EvaluateRequirement(ProxyParam<stats::Character> character, FixedString const& requirementName, std::optional<int> param, std::optional<FixedString> tag, std::optional<bool> negate)
 {
 	auto requirementId = gExtender->GetCustomRequirementRegistry().GetId(requirementName);
