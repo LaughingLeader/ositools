@@ -248,7 +248,19 @@ local _MissingFuncData = {
 			},
 		},
 	},
+	Ext_ServerCustomStat = {
+		GetAll = {
+			Return = {
+				"Guid[] customStatGuids"
+			}
+		}
+	},
 	Ext_Stats = {
+		Get = {
+			Return = {
+				"StatEntryType stat"
+			}
+		},
 		SetLevelScaling = {
 			Params = {
 				{
@@ -483,7 +495,7 @@ local _MissingFuncData = {
 			Params = {
 				{
 					name = "gameObject",
-					arg = "ObjectHandle|SoundObjectId|nil"
+					arg = "ComponentHandle|SoundObjectId|nil"
 				},
 				{
 					name = "rtpcName",
@@ -496,7 +508,7 @@ local _MissingFuncData = {
 			Params = {
 				{
 					name = "gameObject",
-					arg = "ObjectHandle|SoundObjectId|nil"
+					arg = "ComponentHandle|SoundObjectId|nil"
 				},
 				{
 					name = "rtpcName",
@@ -509,7 +521,7 @@ local _MissingFuncData = {
 			Params = {
 				{
 					name = "gameObject",
-					arg = "ObjectHandle|SoundObjectId|nil"
+					arg = "ComponentHandle|SoundObjectId|nil"
 				},
 				{
 					name = "rtpcName",
@@ -526,7 +538,7 @@ local _MissingFuncData = {
 			Params = {
 				{
 					name = "gameObject",
-					arg = "ObjectHandle|SoundObjectId|nil"
+					arg = "ComponentHandle|SoundObjectId|nil"
 				},
 				{
 					name = "eventName",
@@ -550,7 +562,7 @@ local _MissingFuncData = {
 			Params = {
 				{
 					name = "gameObject",
-					arg = "ObjectHandle|SoundObjectId|nil"
+					arg = "ComponentHandle|SoundObjectId|nil"
 				},
 				{
 					name = "eventName",
@@ -584,7 +596,7 @@ local _MissingFuncData = {
 			Params = {
 				{
 					name = "gameObject",
-					arg = "ObjectHandle|SoundObjectId|nil"
+					arg = "ComponentHandle|SoundObjectId|nil"
 				},
 				{
 					name = "switchGroup",
@@ -601,7 +613,7 @@ local _MissingFuncData = {
 			Description = "--- Stop audio for an object.",
 			Params = {{
 				name = "gameObject",
-				arg = "ObjectHandle|SoundObjectId|nil"
+				arg = "ComponentHandle|SoundObjectId|nil"
 			}}
 		}
 	},
@@ -701,12 +713,38 @@ local _MissingFuncData = {
 					description = "The event parameters in a story header-like format, i.e. `(CHARACTERGUID)_Target, (STRING)_Name`",
 				}
 			}
+		},
+		RegisterListener = {
+			Description = _MultilineComment("Register a new Osiris event.",
+			"See here: https://github.com/Norbyte/ositools/blob/master/Docs/LuaAPIDocs.md#events",
+			"Custom events can be thrown by calling them like a function: `Osi.MyEvent(character.MyGuid, 'Test')`"),
+			Params = {
+				{
+					name = "arity",
+					arg = "integer",
+					description = "The number of parameters for the callback.",
+				},
+				{
+					name = "eventType",
+					arg = "OsirisEventType",
+					description = "The type of event to capture. This influences when the callback is invoked.",
+				},
+				{
+					name = "callback",
+					arg = "fun(...:string|number)",
+					description = "The function to call when the event happens.",
+				}
+			},
+			Return = {
+				"any"
+			}
 		}
 	}
 }
 _MissingFuncData.Ext_ClientClient = {GetGameState = _MissingFuncData.Ext_ServerServer.GetGameState}
 
 _MissingFuncData.Ext_ClientEntity.GetCharacterLegacy = {Params=_MissingFuncData.Ext_ClientEntity.GetCharacter.Params, Return={"EclCharacter legacyCharacter # A character with backwards-compatibility (to avoid lifetime errors)."}}
+_MissingFuncData.Ext_ClientEntity.GetItemLegacy = {Params=_MissingFuncData.Ext_ClientEntity.GetItem.Params, Return={"EclItem legacyItem # An item with backwards-compatibility (to avoid lifetime errors)."}}
 _MissingFuncData.Ext_ServerEntity.GetCharacterLegacy = {Params=_MissingFuncData.Ext_ServerEntity.GetCharacter.Params, Return={"EsvCharacter legacyCharacter # A character with backwards-compatibility (to avoid lifetime errors)."}}
 
 local _MissingFuncFieldData = {
