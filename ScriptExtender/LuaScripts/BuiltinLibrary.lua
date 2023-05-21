@@ -32,9 +32,9 @@ _I._DeprecationURLShown = false
 Ext._WarnDeprecated56 = function (msg, type)
 	type = type or msg
 	if _I._WarningShown[type] == nil then
-		Ext.PrintWarning(msg)
+		Ext.Utils.PrintWarning(msg)
 		if not _I._DeprecationURLShown then
-			Ext.PrintWarning("See https://github.com/Norbyte/ositools/blob/master/Docs/ReleaseNotesv56.md for more info.")
+			Ext.Utils.PrintWarning("See https://github.com/Norbyte/ositools/blob/master/Docs/ReleaseNotesv56.md for more info.")
 			_I._DeprecationURLShown = true
 		end
 		_I._WarningShown[type] = true
@@ -43,7 +43,7 @@ end
 
 Ext.Require = function (mod, path)
 	if ModuleUUID == nil then
-		Ext.PrintWarning("Calling Ext.Require() after the module was loaded is deprecated!");
+		Ext.Utils.PrintWarning("Calling Ext.Require() after the module was loaded is deprecated!");
 	end
 
 	local fullName
@@ -169,7 +169,7 @@ function CallDeprecated(fun, oldName, newName)
 end
 
 Ext.EnableExperimentalPropertyWrites = function ()
-	Ext.PrintWarning("EnableExperimentalPropertyWrites() is no longer needed in v53!")
+	Ext.Utils.PrintWarning("EnableExperimentalPropertyWrites() is no longer needed in v53!")
 end
 
 Ext.OnNextTick = function (fun)
