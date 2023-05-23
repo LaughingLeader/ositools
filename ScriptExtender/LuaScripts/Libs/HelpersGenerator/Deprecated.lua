@@ -434,7 +434,7 @@ function Ext.GetStatus(character, handle) end
 --- @deprecated
 --- Returns the specified turn-based combat
 --- @param combatId integer Combat ID
---- @return EsvCombat
+--- @return EsvTurnManagerCombat
 function Ext.GetCombat(combatId) end
 
 --- @deprecated
