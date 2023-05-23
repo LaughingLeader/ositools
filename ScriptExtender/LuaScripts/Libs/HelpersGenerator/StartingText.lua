@@ -91,4 +91,6 @@ Osi = {
 
 --- @alias EsvGameState ServerGameState|ClientGameState
 
+--- Languages supported by default.
+--- @alias LarianSupportedLanguage "Amlatspanish"|"Chinese"|"Chinesetraditional"|"Czech"|"English"|"French"|"German"|"Italian"|"Japanese"|"Korean"|"Polish"|"Portuguesebrazil"|"Russian"|"Spanish"
 ]]

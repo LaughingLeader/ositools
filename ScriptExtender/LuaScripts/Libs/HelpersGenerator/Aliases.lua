@@ -4,5 +4,8 @@ return {
 	},
 	InputRaw = {
 		DeviceId = [["Key"|"Mouse"|"C"|"Touchbar"|"Unknown"]]
+	},
+	GlobalSwitches = {
+		ChatLanguage = "LarianSupportedLanguage|string"
 	}
 }
