@@ -66,6 +66,9 @@ local _MissingFuncData = {
 			},
 			Description = "--- Get a specific, active status from a character."
 		},
+		GetCombatComponent = {
+			Description = "--- Get a CombatComponent by a CombatComponent handle.<br>Example:<br>```Ext.Entity.GetCombatComponent(character.Base.Entity:GetComponent(\"Combat\"))```"
+		},
 	},
 	Ext_ServerEntity = {
 		Override = true,
@@ -132,13 +135,8 @@ local _MissingFuncData = {
 			},
 			Description = "--- Get a specific, active status from a character or item."
 		},
-		GetCombat = {
-			Params = {{
-				name = "combatId",
-				arg = "uint32",
-				description = "The ID of the combat to retrieve.",
-			}},
-			Return = { "EsvCombat combat" }
+		GetCombatComponent = {
+			Description = "--- Get a CombatComponent by a CombatComponent handle.<br>Example:<br>```Ext.Entity.GetCombatComponent(character.Base.Entity:GetComponent(\"Combat\"))```"
 		},
 		GetCurrentLevelData = {
 			Return = { "LevelDesc levelData" }
@@ -262,6 +260,7 @@ local _MissingFuncData = {
 			}
 		},
 		SetLevelScaling = {
+			Override = true,
 			Params = {
 				{
 					name = "modifierListName",
@@ -303,6 +302,7 @@ local _MissingFuncData = {
 			Return = {"StatsDamagePairList damageList"}
 		},
 		GetStats = {
+			Override = true,
 			Params = {{
 				name = "statType",
 				arg = "StatType|nil",
@@ -406,6 +406,10 @@ local _MissingFuncData = {
 			Return = {
 				"\"Campaign\"|\"Arena\"|\"GameMaster\"",
 			}
+		},
+		LoadString = {
+			Description = "--- Similar to lua `loadstring`, with extra safeguards.",
+			Return = {"UserReturn"}
 		}
 	},
 	Ext_Types = {
@@ -715,10 +719,16 @@ local _MissingFuncData = {
 			}
 		},
 		RegisterListener = {
+			Override = true,
 			Description = _MultilineComment("Register a new Osiris event.",
 			"See here: https://github.com/Norbyte/ositools/blob/master/Docs/LuaAPIDocs.md#events",
 			"Custom events can be thrown by calling them like a function: `Osi.MyEvent(character.MyGuid, 'Test')`"),
 			Params = {
+				{
+					name = "name",
+					arg = "string",
+					description = "The Osiris event, query, PROC, QRY, or DB name.",
+				},
 				{
 					name = "arity",
 					arg = "integer",
@@ -739,7 +749,15 @@ local _MissingFuncData = {
 				"any"
 			}
 		}
-	}
+	},
+	Ext_Vars = {
+		DirtyModVariables = {Description="--- Mark a mod's variable, or all variables, as 'dirty', triggering a sync."},
+		DirtyUserVariables = {Description="--- Mark a variable, or all variables, as 'dirty', triggering a sync."},
+		RegisterModVariable = {Params={{name="opts", arg="RegisterUserVariableOptions|nil"}}},
+		RegisterUserVariable = {Description="--- After registration, custom variables can be read/written through the UserVars property on characters and items.<br>See here: https://github.com/Norbyte/ositools/blob/master/Docs/ReleaseNotesv58.md#custom-variables<br><h4>Usage Notes:</h4><ul><li>Since variable prototypes are used for savegame serialization, network syncing, etc., they must be registered before the savegame is loaded and every time the Lua context is reset; performing the registration when `BootstrapServer.lua` or `BootstrapClient.lua` is loaded is recommended.</li><li>Although the variables registered server-side and client-side can differ, it is recommended to register all variables on both sides (even if they're server-only or client-only) for consistency.</li><li>Variable names, much like Osiris DB names are global; it is recommended to prefix them with your mod name to ensure they're unique.</li><li>Variables must be registered with the same settings on both client and server, otherwise various synchronization issues may occur.</ul>",
+		Params={{name="opts", arg="RegisterUserVariableOptions|nil"}}
+		},
+	},
 }
 _MissingFuncData.Ext_ClientClient = {GetGameState = _MissingFuncData.Ext_ServerServer.GetGameState}
 
@@ -839,9 +857,6 @@ local _MissingFuncFieldData = {
 		GetResistanceCallback = "(fun(target:CDivinityStatsCharacter, damageType:StatsDamageType|string, isBaseValue:boolean):int32)|nil",
 		GetMagicArmorDamageCallback = "(fun(target:CDivinityStatsCharacter, damageType:StatsDamageType|string, int32:damageAmount):int32)|nil Not implemented yet",
 		GetArmorDamageCallback = "(fun(target:CDivinityStatsCharacter, damageType:StatsDamageType|string, int32:damageAmount):int32)|nil Not implemented yet",
-	},
-	Ext_Utils = {
-		LoadString = "fun(str:string):UserReturn Similar to lua `loadstring`, with extra safeguards.",
 	},
 	Ext_Vars = {
 		DirtyModVariables = "fun(modGuid?:FixedString, key?:FixedString) Mark a mod's variable, or all variables, as 'dirty', triggering a sync.",
