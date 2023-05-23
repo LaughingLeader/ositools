@@ -155,6 +155,7 @@ local _ModuleToClassField = {
     ["Module_Stats.TreasureCategory"] = "Module_Stats",
     ["Module_Stats.TreasureTable"] = "Module_Stats",
     ["Module_Stats.Math"] = "Module_Stats",
+    ["Module_Stats.Requirement"] = "Module_Stats",
     ["Module_ServerSurface.Action"] = "Module_ServerSurfaceAction",
 }
 
@@ -943,6 +944,10 @@ function Generator:EmitModule(type, moduleToClassField)
         self:EmitLine(customText.After)
     end
     self:EmitEmptyLine()
+
+    for i,fname in ipairs(extendedFuncSigs) do
+        self:EmitModuleFunction(type, fname, nativeDefn)
+    end
 end
 
 local function GenerateSubscriptionEvents(self)
