@@ -613,7 +613,20 @@ function Generator:EmitFullMethodSignature(cls, funcName, fun, nativeMethod, aft
         missingFuncData = _FuncData.Regular[clsName][funcName]
     end
 
-    if missingFuncData.Params and (_TableIsNullOrEmpty(fun.Params) or missingFuncData.Override) then
+    local emitDefaultParams = true
+
+    if missingFuncData.Params then
+        emitDefaultParams = not _TableIsNullOrEmpty(fun.Params) and not missingFuncData.Override
+    end
+
+    if emitDefaultParams then
+        for i,arg in ipairs(fun.Params) do
+            table.insert(argDescs, "--- @param " .. nativeMethod.params[i].name .. " " .. self:MakeTypeSignature(cls, arg) .. " " ..  self.Trim(nativeMethod.params[i].description))
+            table.insert(args, nativeMethod.params[i].name)
+        end
+    end
+
+    if missingFuncData.Params then
         if missingFuncData.Overload then
             overloads = missingFuncData.Overload
         end
@@ -624,11 +637,6 @@ function Generator:EmitFullMethodSignature(cls, funcName, fun, nativeMethod, aft
                 table.insert(argDescs, "--- @param " .. data.name .. " " .. data.arg .. " " ..  self.Trim(data.description or ""))
             end
             table.insert(args, data.name)
-        end
-    else
-        for i,arg in ipairs(fun.Params) do
-            table.insert(argDescs, "--- @param " .. nativeMethod.params[i].name .. " " .. self:MakeTypeSignature(cls, arg) .. " " ..  self.Trim(nativeMethod.params[i].description))
-            table.insert(args, nativeMethod.params[i].name)
         end
     end
 
