@@ -1399,10 +1399,13 @@ CustomRequirementContext* GetRequirementContext()
 }
 
 /// <summary>
-/// Adds a new stat requirement, or overrides an existing requirement. Returns the CustomRequirementDescriptor.
+/// Evaluates whether a requirement is met.
 /// </summary>
+/// <param name="character">The CDivinityStatsCharacter.</param>
 /// <param name="requirementName">The requirement ID.</param>
-/// <param name="overwrite">Only set this to true if this is overriding a builtin requirement.</param>
+/// <param name="param">The requirement amount.</param>
+/// <param name="tag">For tag requirements, this is the tag ID.</param>
+/// <param name="negate">This is the equivalent of using ! in stats.</param>
 /// <returns>CustomRequirementDescriptor</returns>
 std::optional<bool> EvaluateRequirement(ProxyParam<stats::Character> character, FixedString const& requirementName, std::optional<int> param, std::optional<FixedString> tag, std::optional<bool> negate)
 {
