@@ -1086,6 +1086,12 @@ void SetPersistence(FixedString const& statName, bool persist)
 	}
 }
 
+/// <summary>
+/// Get a deltamod.
+/// </summary>
+/// <param name="id" type="FixedString"></param>
+/// <param name="modifierType" type="EquipmentStatsType">The stats type the deltamod modifies.</param>
+/// <returns name="deltamod">DeltaMod</returns>
 
 UserReturn GetDeltaMod(lua_State* L, FixedString const& name, FixedString const& modifierType)
 {
@@ -1107,6 +1113,10 @@ UserReturn GetDeltaMod(lua_State* L, FixedString const& name, FixedString const&
 	return LuaWrite(L, deltaMod);
 }
 
+/// <summary>
+/// Commit deltamod changes.
+/// </summary>
+/// <param name="deltamod" type="DeltaMod"></param>
 void UpdateDeltaMod(lua_State* L)
 {
 	StackCheck _(L, 0);
@@ -1350,10 +1360,10 @@ std::optional<int32_t> AddEnumerationValue(FixedString const& valueType, FixedSt
 }
 
 /// <summary>
-/// Adds a new damage type, or overrides an existing type.
+/// Adds a new damage type, or overwrite an existing type.
 /// </summary>
 /// <param name="typeName" type="FixedString">The damage type ID.</param>
-/// <param name="overwrite">Only set this to true if this is overriding a builtin damage type.</param>
+/// <param name="overwrite">Only set this to true if overwriting an existing, builtin damage type.</param>
 /// <returns>CustomDamageTypeDescriptor</returns>
 CustomDamageTypeDescriptor* AddDamageType(FixedString const& typeName, std::optional<bool> overwrite)
 {
@@ -1372,10 +1382,10 @@ CustomDamageTypeDescriptor* AddDamageType(FixedString const& typeName, std::opti
 }
 
 /// <summary>
-/// Adds a new stat requirement, or overrides an existing requirement.
+/// Adds a new stat requirement, or overwrite an existing requirement.
 /// </summary>
 /// <param name="requirementName" type="FixedString">The requirement ID.</param>
-/// <param name="overwrite">Only set this to true if this is overriding a builtin requirement.</param>
+/// <param name="overwrite">Only set this to true if overwriting an existing, builtin requirement.</param>
 /// <returns>CustomRequirementDescriptor</returns>
 CustomRequirementDescriptor* AddRequirement(FixedString const& requirementName, std::optional<bool> overwrite)
 {
@@ -1456,6 +1466,12 @@ std::optional<bool> EvaluateRequirement(ProxyParam<stats::Character> character, 
 	return result;
 }
 
+/// <summary>
+/// Adds a new stat condition (used in TargetConditions/AoEConditions/ForkingConditions/CycleConditions etc), or overwrite an existing condition.
+/// </summary>
+/// <param name="conditionName" type="FixedString">The condition ID.</param>
+/// <param name="overwrite">Only set this to true if overwriting an existing, builtin condition.</param>
+/// <returns>CustomRequirementDescriptor</returns>
 CustomConditionDescriptor* AddCondition(FixedString const& conditionName, std::optional<bool> overwrite)
 {
 	CustomConditionDescriptor* descriptor;
@@ -1473,6 +1489,13 @@ CustomConditionDescriptor* AddCondition(FixedString const& conditionName, std::o
 }
 
 
+/// <summary>
+/// Adds a new stat condition (used in TargetConditions/AoEConditions/ForkingConditions/CycleConditions etc), or overwrite an existing condition.
+/// </summary>
+/// <param name="character" type="CDivinityStatsCharacter"></param>
+/// <param name="damageType"></param>
+/// <param name="getBaseAmount">Get the base amount only, ignoring boosts.</param>
+/// <returns>int32</returns>
 int32_t GetResistance(ProxyParam<Character> self, DamageType damageType, std::optional<bool> baseValues)
 {
 #if defined(OSI_EOCAPP)
@@ -1481,6 +1504,7 @@ int32_t GetResistance(ProxyParam<Character> self, DamageType damageType, std::op
 	return GetStaticSymbols().CDivinityStats_Character__GetResistance(self, damageType, baseValues && *baseValues, false);
 #endif
 }
+
 
 float GetDamageBoostByType(ProxyParam<Character> self, DamageType damageType)
 {
