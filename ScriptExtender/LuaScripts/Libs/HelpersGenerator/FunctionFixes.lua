@@ -312,6 +312,55 @@ local _MissingFuncData = {
 				"FixedString[]"
 			}
 		},
+		AddAttribute = {
+			Override = true,
+			Params = {
+				{ name = "modifierList", arg = "ModifierListType" },
+				{ name = "attributeName", arg = "FixedString" },
+				{ name = "valueType", arg = "ModifierValueType" }
+			},
+			Return = {"boolean"}
+		},
+		AddDamageType = {
+			Override = true,
+			Params = {
+				{ name = "damageType", arg = "FixedString" },
+				{ name = "overwriteBuiltin", arg = "boolean|nil" },
+			},
+			Return = {"CustomDamageTypeDescriptor"}
+		},
+		AddEnumerationValue = {
+			Override = true,
+			Params = {
+				{ name = "valueType", arg = "ModifierValueType" },
+				{ name = "enumLabel", arg = "FixedString" },
+			},
+			Return = {"int32"}
+		},
+		AddRequirement = {
+			Override = true,
+			Params = {
+				{ name = "id", arg = "FixedString" },
+				{ name = "overwriteBuiltin", arg = "boolean|nil" },
+			},
+			Return = {"CustomRequirementDescriptor"}
+		},
+		AddCondition = {
+			Override = true,
+			Params = {
+				{ name = "id", arg = "FixedString" },
+				{ name = "overwriteBuiltin", arg = "boolean|nil" },
+			},
+			Return = {"CustomConditionDescriptor"}
+		},
+		GetItemBaseStats = {
+			Override = true,
+			Params = {
+				{ name = "id", arg = "FixedString" },
+				{ name = "level", arg = "int32" },
+			},
+			Return = {"CDivinityStatsItem"}
+		},
 	},
 	Ext_Utils = {
 		Print = {
