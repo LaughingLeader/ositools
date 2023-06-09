@@ -203,12 +203,17 @@ return[[--#region Flash Types
 --- @field swapChildrenAt fun(index1:integer, index2:integer) Swaps the z-order (front-to-back order) of the child objects at the two specified index positions in the child list
 
 --- @class FlashRectangle:FlashObject
+--- @field width number
+--- @field height number
 --- @field x number
 --- @field y number
 --- @field top number
 --- @field bottom number
 --- @field left number
 --- @field right number
+--- @field size FlashPoint
+--- @field bottomRight FlashPoint
+--- @field topLeft FlashPoint
 
 --- @class FlashSprite:FlashDisplayObjectContainer
 --- @field buttonMode boolean Specifies the button mode of this sprite
