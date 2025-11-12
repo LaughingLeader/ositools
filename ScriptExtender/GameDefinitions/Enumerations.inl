@@ -3279,7 +3279,7 @@ BEGIN_BITMASK(UIDirtyFlag, uint64_t)
 	EV(CharacterRelations, 0x80000000)
 END_ENUM()
 
-BEGIN_ENUM(ProjectOnHitActionType, uint32_t)
+BEGIN_ENUM(ProjectileOnHitActionType, uint32_t)
 	EV(Fork, 1)
 	EV(Summon, 2)
 	EV(Pierce, 3)

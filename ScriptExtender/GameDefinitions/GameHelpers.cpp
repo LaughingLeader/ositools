@@ -449,14 +449,14 @@ namespace dse
 		}
 	}
 
-	ProjectOnHitActionType esv::ProxyProjectileHit::GetTypeId()
+	ProjectileOnHitActionType esv::ProxyProjectileHit::GetTypeId()
 	{
 		if (WrappedHit) {
 			return WrappedHit->GetTypeId();
 		} else {
 			// Use nonexistent ID to prevent instantiation after reload if our hook
 			// somehow got into a savegame.
-			return ProjectOnHitActionType::None;
+			return ProjectileOnHitActionType::None;
 		}
 	}
 

@@ -18,7 +18,7 @@ namespace dse
             virtual void Destroy(bool b) = 0;
             virtual void OnHit(glm::vec3 const& position, ComponentHandle const& objectHandle, Projectile* projectile) = 0;
             virtual void Visit(ObjectVisitor* visitor) = 0;
-            virtual ProjectOnHitActionType GetTypeId() = 0;
+            virtual ProjectileOnHitActionType GetTypeId() = 0;
 
             ComponentHandle CasterHandle;
             int Level{ -1 };
@@ -52,7 +52,7 @@ namespace dse
             void Destroy(bool b) override;
             void OnHit(glm::vec3 const& position, ComponentHandle const& objectHandle, Projectile* projectile) override;
             void Visit(ObjectVisitor* visitor) override;
-            ProjectOnHitActionType GetTypeId() override;
+            ProjectileOnHitActionType GetTypeId() override;
 
             DefaultProjectileHit* WrappedHit{ nullptr };
         };

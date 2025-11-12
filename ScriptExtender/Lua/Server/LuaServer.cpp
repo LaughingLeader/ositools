@@ -671,9 +671,9 @@ void LuaPolymorphic<aspk::Property>::MakeRef(lua_State* L, aspk::Property* o, Li
 void LuaPolymorphic<esv::DefaultProjectileHit>::MakeRef(lua_State* L, esv::DefaultProjectileHit* o, LifetimeHandle const& lifetime)
 {
 	switch (o->GetTypeId()) {
-		case ProjectOnHitActionType::Fork: return MakeDirectObjectRef(L, lifetime, static_cast<esv::ForkOnHit*>(o));
-		case ProjectOnHitActionType::Summon: return MakeDirectObjectRef(L, lifetime, static_cast<esv::SummonOnHit*>(o));
-		case ProjectOnHitActionType::Pierce: return MakeDirectObjectRef(L, lifetime, static_cast<esv::PierceOnHit*>(o));
+		case ProjectileOnHitActionType::Fork: return MakeDirectObjectRef(L, lifetime, static_cast<esv::ForkOnHit*>(o));
+		case ProjectileOnHitActionType::Summon: return MakeDirectObjectRef(L, lifetime, static_cast<esv::SummonOnHit*>(o));
+		case ProjectileOnHitActionType::Pierce: return MakeDirectObjectRef(L, lifetime, static_cast<esv::PierceOnHit*>(o));
 		default: return MakeDirectObjectRef(L, lifetime, o);
 	}
 }
